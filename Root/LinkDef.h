@@ -16,10 +16,12 @@
 #include <xAODAnaHelpers/ElectronCalibrator.h>
 #include <xAODAnaHelpers/PhotonCalibrator.h>
 #include <xAODAnaHelpers/JetCalibrator.h>
+#include <xAODAnaHelpers/ClusterUncertaintyTool.h>
 #include <xAODAnaHelpers/MuonCalibrator.h>
 /*#include <xAODAnaHelpers/GroomedFatJets.h>*/
 #include <xAODAnaHelpers/HLTJetRoIBuilder.h>
 #include <xAODAnaHelpers/HLTJetGetter.h>
+#include <xAODAnaHelpers/JetMaker.h>
 
 /* Missing Energy Reconstruction */
 #include <xAODAnaHelpers/METConstructor.h>
@@ -80,10 +82,13 @@
 
 #pragma link C++ class METConstructor+;
 
+#pragma link C++ class ClusterUncertaintyTool+;
+
 #pragma link C++ class ElectronEfficiencyCorrector+;
 #pragma link C++ class MuonEfficiencyCorrector+;
 #pragma link C++ class BJetEfficiencyCorrector+;
 
+#pragma link C++ class JetMaker+;
 #pragma link C++ class IParticleHistsAlgo+;
 #pragma link C++ class JetHistsAlgo+;
 #pragma link C++ class MuonHistsAlgo+;
