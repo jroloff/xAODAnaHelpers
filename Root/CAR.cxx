@@ -43,7 +43,8 @@ StatusCode ClusterAngularResolution::process(xAOD::CaloClusterContainer* cont) c
     cl->setE(E_smear);
     cl->setPhi(phi_smear);
     cl->setEta(eta_smear);
-    cl->setM(E_smear);
+    //cl->setM(E_smear);
+    //cl->setM(E_smear);
   }
   return StatusCode::SUCCESS;
 }

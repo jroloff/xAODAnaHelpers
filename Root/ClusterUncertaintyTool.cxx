@@ -60,7 +60,7 @@ ClusterUncertaintyTool::ClusterUncertaintyTool():
 	//m_clust(0)
 {
 	m_name = "ClusterUncertaintyTool";
-	m_inContainerName = "";
+	m_inContainerName = "CaloCalOrigTopoClusters";
  	m_outContainerName = m_name;
 
 }
@@ -97,7 +97,8 @@ EL::StatusCode ClusterUncertaintyTool::initialize(){
   m_event = wk()->xaodEvent();
 	m_store = wk()->xaodStore();
 	//TString clusterColl = "CaloCalTopoClusters";
-	std::string clusterColl = "CaloCalTopoClusters";
+	//std::string clusterColl = "CaloCalTopoClusters";
+	std::string clusterColl = m_inContainerName;
 
   ClusterEnergyScale* cesUp = new ClusterEnergyScale("cesUp");
 	cesUp->setProperty("Method", "Up");
@@ -105,12 +106,12 @@ EL::StatusCode ClusterUncertaintyTool::initialize(){
   hclusts_cesUp.push_back(iCESUp);
 
   ClusterEnergyScale* cesDown = new ClusterEnergyScale("cesDown");
-	cesUp->setProperty("Method", "Down");
+	cesDown->setProperty("Method", "Down");
   ToolHandle<IJetConstituentModifier> iCESDown(cesDown);
   hclusts_cesDown.push_back(iCESDown);
 
   ClusterEnergyScale* ces = new ClusterEnergyScale("ces");
-	cesUp->setProperty("Method", "Other");
+	ces->setProperty("Method", "Other");
   ToolHandle<IJetConstituentModifier> iCES(ces);
   hclusts_ces.push_back(iCES);
 
@@ -130,7 +131,15 @@ EL::StatusCode ClusterUncertaintyTool::initialize(){
   cesUpModSeq->initialize();
   ToolHandle<IJetExecuteTool> iclustModTool1(cesUpModSeq);
 
-  cesDownModSeq = new JetConstituentModSequence( "CesDwonModifSequence");
+  cesModSeq = new JetConstituentModSequence( "CesModifSequence");
+  cesModSeq->setProperty("InputContainer", clusterColl);
+  cesModSeq->setProperty("OutputContainer", ("CES_"+clusterColl));
+  cesModSeq->setProperty("InputType", "CaloCluster");
+  cesModSeq->setProperty("Modifiers", hclusts_ces );
+  cesModSeq->initialize();
+  ToolHandle<IJetExecuteTool> iclustModTool5(cesModSeq);
+
+  cesDownModSeq = new JetConstituentModSequence( "CesDownModifSequence");
   cesDownModSeq->setProperty("InputContainer", clusterColl);
   cesDownModSeq->setProperty("OutputContainer", ("CESDown_"+clusterColl));
   cesDownModSeq->setProperty("Method", "Down");
@@ -154,17 +163,11 @@ EL::StatusCode ClusterUncertaintyTool::initialize(){
   ceModSeq->initialize();
   ToolHandle<IJetExecuteTool> iclustModTool4(ceModSeq);
 
-/*
-	cesJets = JetMakerTool("myJetMaker2");
-                          "JetRadius": 1.0,
-                          "InputClusters": "CESUp_CaloCalTopoClusters",
-                          "OutputContainer": "MyAntiKt10LCTopoCESJets"
-
-*/
   return EL::StatusCode::SUCCESS;
 }
 
 EL::StatusCode ClusterUncertaintyTool::execute() {
+ cesModSeq->execute();
  cesUpModSeq->execute();
  cesDownModSeq->execute();
  carModSeq->execute();

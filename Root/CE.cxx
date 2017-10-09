@@ -34,11 +34,11 @@ ClusterEfficiency::ClusterEfficiency(const std::string& name) : JetConstituentMo
 StatusCode ClusterEfficiency::process(xAOD::CaloClusterContainer* cont) const {
   for(xAOD::CaloCluster* cl : *cont) {
     double phi_smear = myrand_global->Gaus(cl->phi(),0.005);
-    double eta_smear = myrand_global->Gaus(cl->eta(),0.005);
+    //double eta_smear = myrand_global->Gaus(cl->eta(),0.005);
 		double E = cl->e();
 		double pt = cl->pt();
 		double eta = cl->eta();
-    double E_smear = E*cosh(eta)/cosh(eta_smear);
+    //double E_smear = E*cosh(eta)/cosh(eta_smear);
 
 
 
@@ -62,12 +62,10 @@ StatusCode ClusterEfficiency::process(xAOD::CaloClusterContainer* cont) const {
     double p = pt*cosh(eta)/1000.; //GeV
     double r = (alpha1[etabin]*exp(beta1[etabin]*p) + alpha2[etabin]*exp(beta2[etabin]*p*p)) / 100.;
     double flip = myrand_global->Uniform(0.,1.);
-
-    if (!((flip < r) && (E/1000. < 2.5))) 
-			cl->setE(E);
-			// do nothing
-		else
-			cl->setE(0);
+    if (((flip < r) && (E/1000. < 2.5))) {
+			cl->setE(0.0);
+			//std::cout << E << "\t" << "cluster eff" << std::endl;
+		}
   }
 
   return StatusCode::SUCCESS;

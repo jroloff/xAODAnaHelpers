@@ -103,7 +103,7 @@ EL::StatusCode JetMaker::initialize(){
 
   SkipNegativeEnergy = true;
   Label = "LCTopo";
-  JetRadius = 1.0;
+  //JetRadius = m_jetR;
   JetAlgorithm = "AntiKt";
   PtMin =  0.1;
   InputLabel = "LCTopo";
