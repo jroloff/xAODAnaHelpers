@@ -116,9 +116,11 @@ EL::StatusCode JetMaker::initialize(){
   m_event = wk()->xaodEvent();
   m_store = wk()->xaodStore();
 
-  PseudoJetGetter* plcget = new PseudoJetGetter("m_pjgetter");
+  //PseudoJetGetter* plcget = new PseudoJetGetter("m_pjgetter");
+  plcget = new PseudoJetGetter("m_pjgetter");
   EL_RETURN_CHECK("initialize()", plcget->setProperty("InputContainer", (const char *) InputClusters) );
   EL_RETURN_CHECK("initialize()", plcget->setProperty("OutputContainer", (const char *) m_outcont ) );
+  //EL_RETURN_CHECK("initialize()", plcget->setProperty("Label", "LCTopo" ));
   EL_RETURN_CHECK("initialize()", plcget->setProperty("Label", (const char *) InputLabel) );
   EL_RETURN_CHECK("initialize()", plcget->setProperty("SkipNegativeEnergy", true) );
   EL_RETURN_CHECK("initialize()", plcget->setProperty("GhostScale", 0.0) );
@@ -128,7 +130,8 @@ EL::StatusCode JetMaker::initialize(){
 
   //check jetrec.cxx for jvt and many more attributes to be added
   cout << "Creating jet builder." << endl;
-  JetFromPseudojet* pbuild = new JetFromPseudojet("jetbuild");
+  //JetFromPseudojet* pbuild = new JetFromPseudojet("jetbuild");
+  pbuild = new JetFromPseudojet("jetbuild");
   ToolHandle<IJetFromPseudojet> hbuild(pbuild);
   vector<string> jetbuildatts;
   jetbuildatts.push_back("ActiveArea");
@@ -137,7 +140,8 @@ EL::StatusCode JetMaker::initialize(){
   EL_RETURN_CHECK("initialize()", pbuild->initialize() );
 
   cout << "Creating jet finder." << endl;
-  JetFinder* pfind = new JetFinder("jetfind");
+  //JetFinder* pfind = new JetFinder("jetfind");
+  pfind = new JetFinder("jetfind");
   EL_RETURN_CHECK("initialize()", pfind->setProperty("JetAlgorithm", (const char *) JetAlgorithm) );
   EL_RETURN_CHECK("initialize()", pfind->setProperty("JetRadius", JetRadius));
   EL_RETURN_CHECK("initialize()", pfind->setProperty("PtMin", PtMin));
@@ -148,29 +152,30 @@ EL::StatusCode JetMaker::initialize(){
 
   EL_RETURN_CHECK("initialize()",pfind->initialize() );
   cout << "Creating jetrec tool." << endl;
-  JetRecTool* pjrf = new JetRecTool("jrfind");
+  //JetRecTool* pjrf = new JetRecTool("jrfind");
+  pjrf = new JetRecTool("jrfind");
   EL_RETURN_CHECK("initialize()", pjrf->setProperty("OutputContainer", (const char *) OutputContainer));
   EL_RETURN_CHECK("initialize()", pjrf->setProperty("PseudoJetGetters", hgets));
   EL_RETURN_CHECK("initialize()", pjrf->setProperty("JetFinder", hfind));
   EL_RETURN_CHECK("initialize()", pjrf->initialize());
-  ToolHandle<IJetExecuteTool> hjrf(pjrf);
+  //ToolHandle<IJetExecuteTool> hjrf(pjrf);
   hrecs.push_back(pjrf);
-  vector<string> fvmoms;
+  //vector<string> fvmoms;
 
-  fvmoms.push_back("jetP4()");
-  fvmoms.push_back("JetConstitScaleMomentum");
-  vector<string> fmoms;
-  fmoms.push_back("ActiveArea");
+  //fvmoms.push_back("jetP4()");
+  //fvmoms.push_back("JetConstitScaleMomentum");
+  //vector<string> fmoms;
+  //fmoms.push_back("ActiveArea");
 
-  ToolHandleArray<IJetExecuteTool> hjettools;
-  hjettools.push_back(pjrf);
+  //ToolHandleArray<IJetExecuteTool> hjettools;
+  //hjettools.push_back(pjrf);
 
   jrun = new JetToolRunner("jetrunner");
   EL_RETURN_CHECK("initialize()", jrun->setProperty("Tools", hrecs) );
   cout << "Initializing tools." << endl;
   EL_RETURN_CHECK("initialize()", jrun->initialize() );
   jrun->print();
-
+/*
     const std::string stringMeta = wk()->metaData()->castString("SimulationFlavour");
     if ( m_setAFII ) {
       Info("initialize()", "Setting simulation flavour to AFII");
@@ -183,6 +188,7 @@ EL::StatusCode JetMaker::initialize(){
     if ( !m_isFullSim ) {
       m_calibConfig = m_calibConfigAFII;
 		}
+*/
 
 
 	//m_bld = JetFromPseudojet("m_jetBuilder");
@@ -194,7 +200,10 @@ EL::StatusCode JetMaker::initialize(){
 EL::StatusCode JetMaker::execute() {
   if ( m_debug ) { Info("execute()", "Applying SoftDrop... "); }
 	std::cout << "Input clusters: " << InputClusters << "\t" << "Output container: " << OutputContainer << std::endl;
-
+	//plcget->execute();
+	std::cout << __LINE__ << std::endl;
+  //pbuild->execute();
+	std::cout << __LINE__ << std::endl;
 	m_numEvent++;
   jrun->execute();
 

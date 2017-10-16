@@ -111,6 +111,10 @@ public:
 
   bool m_isMC;            //!
 	bool m_isFullSim; //!
+	JetRecTool* pjrf;//!
+  JetFromPseudojet* pbuild;//!
+  JetFinder* pfind;//!
+  PseudoJetGetter* plcget;//!
 		
 	public:
 	JetMaker ();

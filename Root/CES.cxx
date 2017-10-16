@@ -19,8 +19,7 @@
 using namespace std;
 
 
-ClusterEnergyScale::ClusterEnergyScale(const std::string& name) : JetConstituentModifierBase(name)                                                                      
-{
+ClusterEnergyScale::ClusterEnergyScale(const std::string& name) : JetConstituentModifierBase(name)  {
 
 #ifdef ASG_TOOL_ATHENA
   declareInterface<IJetConstituentModifier>(this);
@@ -57,9 +56,21 @@ StatusCode ClusterEnergyScale::process(xAOD::CaloClusterContainer* cont) const {
     double e_cesu = E*(1.+CESfactor);
     double e_cesd = E*(1.-CESfactor);
 
-	  if(strcmp("Up", m_method.c_str()) == 1) cl->setE( E * (1. + CESfactor) );
-		else if(strcmp("Down", m_method.c_str()) == 1) cl->setE( E * (1. - CESfactor) );
-		else cl->setE( E * (1. + CESfactor * CES_option2_factors[etabin]) );
+		//std::cout << "Method: " << m_method << "\t" << CESfactor << "\t" << std::endl;
+	  //if(strcmp("Up", m_method.c_str()) == 1) cl->setE( E * (1. + CESfactor) );
+	  if(strcmp("Up", m_method.c_str()) == 0) {
+	
+			cl->setE( e_cesu );
+		//	std::cout << m_method << "\t" << E << "\t" << cl->e() << "\t" << CESfactor << "\t" << E*(1+CESfactor) << std::endl;
+		}
+		//else if(strcmp("Down", m_method.c_str()) == 1) cl->setE( E * (1. - CESfactor) );
+		else if(strcmp("Down", m_method.c_str()) == 0) {
+			cl->setE( e_cesd );
+		}
+		//else cl->setE( E * (1. + CESfactor * CES_option2_factors[etabin]) );
+		else {
+			cl->setE( e_ces );
+		}
   }
   return StatusCode::SUCCESS;
 }
