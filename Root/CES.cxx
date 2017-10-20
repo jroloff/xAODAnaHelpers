@@ -9,6 +9,8 @@
 #include "xAODCaloEvent/CaloClusterContainer.h"
 #include "xAODBase/IParticleHelpers.h"
 #include "xAODCore/ShallowAuxContainer.h"
+#include "TH2.h"
+#include "TFile.h"
 
 #include "TRandom3.h"
 
@@ -42,6 +44,8 @@ StatusCode ClusterEnergyScale::process(xAOD::CaloClusterContainer* cont) const {
     double m_beta = 500;
 		double eta = cl->eta();
 		double E = cl->e();
+		double p = cl->pt();
+		double abs_eta = fabs(eta);
 
 		int etabin = -1;
 		for(int i=0; i<etabins.size(); i++){
@@ -55,6 +59,50 @@ StatusCode ClusterEnergyScale::process(xAOD::CaloClusterContainer* cont) const {
     double e_ces =  E*(1.+CES_option2_factors[etabin]*CESfactor);
     double e_cesu = E*(1.+CESfactor);
     double e_cesd = E*(1.-CESfactor);
+
+	  double center_lambda;
+	 	double m_lambdaCalDivide = 317;
+    bool ishad = true;
+    (cl)->retrieveMoment(xAOD::CaloCluster::CENTER_LAMBDA,center_lambda);
+    if( center_lambda > m_lambdaCalDivide) ishad = false;
+
+    std::string filename = "cluster_uncert_map.root";
+		TFile *file = new TFile(filename.c_str());
+	  TH2D *cluster_means = (TH2D*) file->Get("Mean");
+	  TH2D *cluster_rmss = (TH2D*) file->Get("RMS");
+
+
+
+
+    int pbin = cluster_means->GetXaxis()->FindBin(p);
+    int ebin = cluster_means->GetYaxis()->FindBin(abs_eta);
+    if (pbin > cluster_means->GetNbinsX()) pbin = cluster_means->GetNbinsX();
+    if (pbin < 1) pbin = 1;
+    if (ebin > cluster_means->GetNbinsX()) ebin  = cluster_means->GetNbinsX();
+    if (ebin < 1) ebin  = 1;
+
+    double myCES = fabs(cluster_means->GetBinContent(pbin,ebin)-1.);
+    double myCER = fabs(cluster_rmss->GetBinContent(pbin,ebin));
+
+    if (p > 350) myCES = 0.1;
+    if (p > 350) myCER = 0.1;
+
+  
+    if (!ishad){
+        myCER = 0.004;
+        if (p < 10) myCES = 0.01;
+        else myCES = 0.005; //it is much better than this, just being conservative.                                                         
+    }
+    
+    myCES =  E*(1+myCES);
+    myCER =  E*(1+myCER);
+		std::cout << E << "\t" << e_cesu << "\t" << myCES << std::endl;
+    e_cesu = myCES;
+    e_ces = myCER;
+
+		file->Close();
+
+
 
 		//std::cout << "Method: " << m_method << "\t" << CESfactor << "\t" << std::endl;
 	  //if(strcmp("Up", m_method.c_str()) == 1) cl->setE( E * (1. + CESfactor) );
