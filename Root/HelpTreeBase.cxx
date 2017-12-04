@@ -793,7 +793,9 @@ void HelpTreeBase::FillFatJets( const xAOD::JetContainer* fatJets , const std::s
 
   for( auto fatjet_itr : *fatJets ) {
 
-    this->FillFatJet(fatjet_itr, fatjetName, suffix);
+    if(fatjet_itr->pt() > 200000){
+      this->FillFatJet(fatjet_itr, fatjetName, suffix);
+    }
 
   } // loop over fat jets
 

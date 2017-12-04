@@ -43,52 +43,60 @@ c.setalg("BasicEventSelection", {"m_truthLevelOnly": False,
 
 # Create the various softdrop jet collections 
 
+#Apply origin correction to the clusters
+c.setalg("OriginCorrectionTool", {"m_name": "OriginCorrections",
+                          "InputContainer": "CaloCalTopoClusters",
+                          "OutputContainer": "CaloCalOrigTopoClusters"
+                        })
+
+
 c.setalg("ClusterUncertaintyTool", {"m_name": "ClusterUncertainty"})
 
 
 # Create R = 0.8 jets
 c.setalg("JetMaker", {"m_name": "JetMaker",
                           "JetRadius": 1.0,
-                          "InputClusters": "CaloCalTopoClusters",
+                          "InputClusters": "CaloCalOrigTopoClusters",
                           "OutputContainer": "MyAntiKt10LCTopoJets"
                         })
 
-c.setalg("JetMaker", {"m_name": "JetMakerCAR",
-                          "JetRadius": 1.0,
-                          "InputClusters": "CAR_CaloCalTopoClusters",
-                          "OutputContainer": "MyAntiKt10LCTopoCARJets"
-                        })
-
-c.setalg("JetMaker", {"m_name": "JetMakerCE",
-                          "JetRadius": 1.0,
-                          "InputClusters": "CE_CaloCalTopoClusters",
-                          "OutputContainer": "MyAntiKt10LCTopoCEJets"
-                        })
-
-c.setalg("JetMaker", {"m_name": "JetMakerCES",
-                          "JetRadius": 1.0,
-                          "InputClusters": "CES_CaloCalTopoClusters",
-                          "OutputContainer": "MyAntiKt10LCTopoCESJets"
-                        })
-
-c.setalg("JetMaker", {"m_name": "JetMakerCESUp",
-                          "JetRadius": 1.0,
-                          "InputClusters": "CESUp_CaloCalTopoClusters",
-                          "OutputContainer": "MyAntiKt10LCTopoCESUpJets"
-                        })
-
-c.setalg("JetMaker", {"m_name": "JetMakerCESDown",
-                          "JetRadius": 1.0,
-                          "InputClusters": "CESDown_CaloCalTopoClusters",
-                          "OutputContainer": "MyAntiKt10LCTopoCESDownJets"
-                        })
+#c.setalg("JetMaker", {"m_name": "JetMakerCAR",
+#                          "JetRadius": 1.0,
+#                          "InputClusters": "CAR_CaloCalTopoClusters",
+#                          "OutputContainer": "MyAntiKt10LCTopoCARJets"
+#                        })
+#
+#c.setalg("JetMaker", {"m_name": "JetMakerCE",
+#                          "JetRadius": 1.0,
+#                          "InputClusters": "CE_CaloCalTopoClusters",
+#                          "OutputContainer": "MyAntiKt10LCTopoCEJets"
+#                        })
+#
+#c.setalg("JetMaker", {"m_name": "JetMakerCES",
+#                          "JetRadius": 1.0,
+#                          "InputClusters": "CES_CaloCalTopoClusters",
+#                          "OutputContainer": "MyAntiKt10LCTopoCESJets"
+#                        })
+#
+#c.setalg("JetMaker", {"m_name": "JetMakerCESUp",
+#                          "JetRadius": 1.0,
+#                          "InputClusters": "CESUp_CaloCalTopoClusters",
+#                          "OutputContainer": "MyAntiKt10LCTopoCESUpJets"
+#                        })
+##
+#c.setalg("JetMaker", {"m_name": "JetMakerCESDown",
+#                          "JetRadius": 1.0,
+#                          "InputClusters": "CESDown_CaloCalTopoClusters",
+#                          "OutputContainer": "MyAntiKt10LCTopoCESDownJets"
+#                        })
 
 
 c.setalg("TreeAlgo", {"m_name": "OutputTree",
-                      "m_fatJetContainerName": "MyAntiKt10LCTopoJets MyAntiKt10LCTopoCESJets MyAntiKt10LCTopoCARJets MyAntiKt10LCTopoCEJets MyAntiKt10LCTopoCESUpJets MyAntiKt10LCTopoCESDownJets", 
-                      "m_fatJetDetailStr": "kinematic energy scales",
+                      #"m_fatJetContainerName": "MyAntiKt10LCTopoJets", 
+                      #"m_fatJetContainerName": "MyAntiKt10LCTopoJets MyAntiKt10LCTopoCESJets MyAntiKt10LCTopoCARJets MyAntiKt10LCTopoCEJets MyAntiKt10LCTopoCESUpJets MyAntiKt10LCTopoCESDownJets", 
+                      #"m_fatJetDetailStr": "kinematic energy scales",
 											"m_trigDetailStr": "basic menuKeys passTriggers",
-                      "m_evtDetailStr": "pileup shapeEM shapeLC truth"
+                      #"m_evtDetailStr": "pileup shapeLC truth"
                     })
 
 

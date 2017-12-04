@@ -111,7 +111,7 @@ EL::StatusCode JetMaker::initialize(){
 	TString m_outcont = OutputContainer;
 	m_outcont += "PJ";
 
-	std::cout << JetRadius << std::endl;
+	//std::cout << JetRadius << std::endl;
 
   m_event = wk()->xaodEvent();
   m_store = wk()->xaodStore();
@@ -129,7 +129,7 @@ EL::StatusCode JetMaker::initialize(){
   hgets.push_back(hlcget);
 
   //check jetrec.cxx for jvt and many more attributes to be added
-  cout << "Creating jet builder." << endl;
+  //cout << "Creating jet builder." << endl;
   //JetFromPseudojet* pbuild = new JetFromPseudojet("jetbuild");
   pbuild = new JetFromPseudojet("jetbuild");
   ToolHandle<IJetFromPseudojet> hbuild(pbuild);
@@ -139,7 +139,7 @@ EL::StatusCode JetMaker::initialize(){
   EL_RETURN_CHECK("initialize()", pbuild->setProperty("Attributes", jetbuildatts) );
   EL_RETURN_CHECK("initialize()", pbuild->initialize() );
 
-  cout << "Creating jet finder." << endl;
+  //cout << "Creating jet finder." << endl;
   //JetFinder* pfind = new JetFinder("jetfind");
   pfind = new JetFinder("jetfind");
   EL_RETURN_CHECK("initialize()", pfind->setProperty("JetAlgorithm", (const char *) JetAlgorithm) );
@@ -151,7 +151,7 @@ EL::StatusCode JetMaker::initialize(){
   ToolHandle<IJetFinder> hfind(pfind);
 
   EL_RETURN_CHECK("initialize()",pfind->initialize() );
-  cout << "Creating jetrec tool." << endl;
+  //cout << "Creating jetrec tool." << endl;
   //JetRecTool* pjrf = new JetRecTool("jrfind");
   pjrf = new JetRecTool("jrfind");
   EL_RETURN_CHECK("initialize()", pjrf->setProperty("OutputContainer", (const char *) OutputContainer));
@@ -172,7 +172,7 @@ EL::StatusCode JetMaker::initialize(){
 
   jrun = new JetToolRunner("jetrunner");
   EL_RETURN_CHECK("initialize()", jrun->setProperty("Tools", hrecs) );
-  cout << "Initializing tools." << endl;
+  //cout << "Initializing tools." << endl;
   EL_RETURN_CHECK("initialize()", jrun->initialize() );
   jrun->print();
 /*
@@ -199,11 +199,11 @@ EL::StatusCode JetMaker::initialize(){
 
 EL::StatusCode JetMaker::execute() {
   if ( m_debug ) { Info("execute()", "Applying SoftDrop... "); }
-	std::cout << "Input clusters: " << InputClusters << "\t" << "Output container: " << OutputContainer << std::endl;
+	//std::cout << "Input clusters: " << InputClusters << "\t" << "Output container: " << OutputContainer << std::endl;
 	//plcget->execute();
-	std::cout << __LINE__ << std::endl;
+	//std::cout << __LINE__ << std::endl;
   //pbuild->execute();
-	std::cout << __LINE__ << std::endl;
+	//std::cout << __LINE__ << std::endl;
 	m_numEvent++;
   jrun->execute();
 
