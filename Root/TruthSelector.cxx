@@ -241,7 +241,7 @@ bool TruthSelector :: executeSelection ( const xAOD::TruthParticleContainer* inT
   if ( m_pass_min > 0 && nPass < m_pass_min ) {
     return false;
   }
-  if ( m_pass_max > 0 && nPass > m_pass_max ) {
+  if ( m_pass_max >= 0 && nPass > m_pass_max ) {
     return false;
   }
 
@@ -324,6 +324,75 @@ int TruthSelector :: PassCuts( const xAOD::TruthParticle* truthPart ) {
 
   if ( m_rapidity_min != 1e8 ) {
     if ( truthPart->rapidity() < m_rapidity_min ) { return 0; }
+  }
+
+  // selections for particles from MCTruthClassifier
+
+  // type
+  if ( m_type != 1000 ) {
+    if( truthPart->isAvailable<unsigned int>("classifierParticleType") ){
+      unsigned int type = truthPart->auxdata<unsigned int>("classifierParticleType");
+      if ( type != m_type ) { return 0; }
+    } else {
+      ANA_MSG_WARNING( "classifierParticleType is not available" );
+    }
+  }
+
+  // origin
+  if ( !m_originOptions.empty() ) { // check w.r.t. multiple possible origin values
+    if ( m_origin != 1000 ) { ANA_MSG_WARNING( "single and multiple origin conditions were selected, only the former will be used" );
+    } else {
+      std::string token;
+      std::vector<unsigned int> originVec;
+      std::istringstream ss(m_originOptions);
+      while ( std::getline(ss, token, '|') ) originVec.push_back(std::stoi(token));
+      bool found = false;
+      if( truthPart->isAvailable<unsigned int>("classifierParticleOrigin") ){
+        unsigned int origin = truthPart->auxdata<unsigned int>("classifierParticleOrigin");
+        for (unsigned int i=0;i<originVec.size();++i){
+          if (origin == originVec.at(i)) found = true;
+        }
+        if (!found) { return 0; }
+      } else {
+        ANA_MSG_WARNING( "classifierParticleOrigin is not available" );
+      }
+    }
+  }
+  if ( m_origin != 1000 ) { // single origin value
+    if( truthPart->isAvailable<unsigned int>("classifierParticleOrigin") ){
+      unsigned int origin = truthPart->auxdata<unsigned int>("classifierParticleOrigin");
+      if ( origin != m_origin ) { return 0; }
+    } else {
+      ANA_MSG_WARNING( "classifierParticleOrigin is not available" );
+    }
+  }
+
+  // pt_dressed
+  if ( m_pT_dressed_min != 1e8 ) {
+    if( truthPart->isAvailable<float>("pt_dressed") ){
+      float pT_dressed = truthPart->auxdata<float>("pt_dressed");
+      if ( pT_dressed < m_pT_dressed_min ) { return 0; }
+    } else {
+      ANA_MSG_WARNING( "pt_dressed is not available" );
+    }
+  }
+
+  // eta_dressed
+  if ( m_eta_dressed_min != 1e8 ) {
+    if( truthPart->isAvailable<float>("eta_dressed") ){
+      float eta_dressed = truthPart->auxdata<float>("eta_dressed");
+      if ( eta_dressed < m_eta_dressed_min ) { return 0; }
+    } else {
+      ANA_MSG_WARNING( "eta_dressed is not available" );
+    }
+  }
+  if ( m_eta_dressed_max != 1e8 ) {
+    if( truthPart->isAvailable<float>("eta_dressed") ){
+      float eta_dressed = truthPart->auxdata<float>("eta_dressed");
+      if ( eta_dressed > m_eta_dressed_max ) { return 0; }
+    } else {
+      ANA_MSG_WARNING( "eta_dressed is not available" );
+    }
   }
 
   return 1;

@@ -6,19 +6,17 @@ xAODAnaHelpers
 .. image:: https://zenodo.org/badge/35496971.svg
    :target: https://zenodo.org/badge/latestdoi/35496971
 
-.. image:: http://build.ci-connect.net:8080/buildStatus/icon?job=RootCore/xAH
-   :target: http://build.ci-connect.net:8080/job/RootCore/xAH
+.. image:: https://travis-ci.org/UCATLAS/xAODAnaHelpers.svg?branch=master
+    :target: https://travis-ci.org/UCATLAS/xAODAnaHelpers
 
 .. raw:: html
 
   <br />
 
-|rootcore_badge|_
-|cmake_badge|_
 
+|release_badges|_
 
-.. _rootcore_badge: Installing.html#rootcore-2-5-x
-.. _cmake_badge: Installing.html#cmake-based-rootcore-2-5-x
+.. _release_badges: Installing.html#cmake
 
 The xAOD analysis framework, born out of ProofAna...or not.
 
@@ -26,15 +24,15 @@ Welcome to the xAODAnaHelpers wiki! This is an xAOD Analysis Framework built for
 
 .. _Versions:
 
-Current Version
----------------
+Latest Version
+--------------
 
 .. Cannot bold just yet: http://stackoverflow.com/questions/33537747/substitution-inside-inline-markup-while-escaping-whitespace
 
-Current AnalysisBase release for |xAH| is Base,\ |ab_release_rc|\ and AnalysisBase,\ |ab_release_cm|\,here.
-
 .. note::
-    If you need to bump up the version of the AnalysisBase being used, please make sure you update the `.jenkins.yml <https://github.com/UCATLAS/xAODAnaHelpers/blob/master/.jenkins.yml>`_ file first.
+    If you need to add a new release to be supported, please make sure you update the GitHub Actions `ci.yml <https://github.com/UCATLAS/xAODAnaHelpers/blob/master/.github/workflows/ci.yml>`_ workflow file first.
+
+We support the following releases: |all_releases|
 
 Python Code Quality
 -------------------
@@ -57,6 +55,7 @@ Contents
    Community
    FAQs
    API
+   api/library_root
 
 Indices and tables
 ==================

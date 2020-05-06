@@ -265,7 +265,7 @@ EL::StatusCode PhotonSelector :: execute ()
     // prepare a vector of the names of CDV containers for usage by downstream algos
     // must be a pointer to be recorded in TStore
     //
-    std::vector< std::string >* vecOutContainerNames = new std::vector< std::string >;
+    auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
     ANA_MSG_DEBUG( " input list of syst size: " << static_cast<int>(systNames->size()) );
 
     // loop over systematic sets
@@ -317,7 +317,7 @@ EL::StatusCode PhotonSelector :: execute ()
 
     // record in TStore the list of systematics names that should be considered down stream
     //
-    ANA_CHECK( m_store->record( vecOutContainerNames, m_outputAlgoSystNames));
+    ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgoSystNames));
   }
 
   // look what we have in TStore
@@ -379,7 +379,7 @@ bool PhotonSelector :: executeSelection ( const xAOD::PhotonContainer* inPhotons
   if ( m_pass_min > 0 && nPass < m_pass_min ) {
     return false;
   }
-  if ( m_pass_max > 0 && nPass > m_pass_max ) {
+  if ( m_pass_max >= 0 && nPass > m_pass_max ) {
     return false;
   }
 
@@ -401,12 +401,6 @@ bool PhotonSelector :: passCuts( const xAOD::Photon* photon )
   // as for Egamma CP  recommendation
   //
   float eta   = ( photon->caloCluster() ) ? photon->caloCluster()->etaBE(2) : -999.0;
-
-  float reta = photon->showerShapeValue(xAOD::EgammaParameters::Reta);
-  float rphi = photon->showerShapeValue(xAOD::EgammaParameters::Rphi);
-  float f1   = photon->showerShapeValue(xAOD::EgammaParameters::f1);
-
-  uint32_t oq= photon->auxdata<uint32_t>("OQ");
 
   // photon ID key name set
   std::string photonIDKeyName = "PhotonID_"+m_photonIdCut;
@@ -433,14 +427,18 @@ bool PhotonSelector :: passCuts( const xAOD::Photon* photon )
   // Object Quality cut
   //
   if ( m_doOQCut ) {
-#ifndef USE_CMAKE
-    if ( (oq & 134217728) != 0 && (reta > 0.98 || rphi > 1.0 || (oq & 67108864) != 0) ) {
-#else
-    if ( (oq & 1073741824)!=0 || 
-	 ( (oq&134217728)!=0 && (reta >0.98 || f1 > 0.4 || (oq & 67108864) != 0) ) ) {
-#endif
-      ANA_MSG_DEBUG( "Electron failed Object Quality cut." );
-      return 0;
+    if (m_readOQFromDerivation){
+      if (!(*photon).isGoodOQ(xAOD::EgammaParameters::BADCLUSPHOTON))
+	return 0;
+    }else{
+      uint32_t oq= photon->auxdata<uint32_t>("OQ");
+      float reta = photon->showerShapeValue(xAOD::EgammaParameters::Reta);
+      float f1   = photon->showerShapeValue(xAOD::EgammaParameters::f1);
+      if ( (oq & 1073741824)!=0 ||
+	   ( (oq&134217728)!=0 && (reta >0.98 || f1 > 0.4 || (oq & 67108864) != 0) ) ) {
+	ANA_MSG_DEBUG( "Electron failed Object Quality cut." );
+	return 0;
+      }
     }
   }
   if(m_useCutFlow) m_ph_cutflowHist_1->Fill( m_ph_cutflow_OQ_cut, 1 );

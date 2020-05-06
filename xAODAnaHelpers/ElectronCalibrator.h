@@ -70,17 +70,12 @@ public:
   std::string m_esModel = "";
   std::string m_decorrelationModel = "";
 
-  /** @brief Force AFII flag in calibration, in case metadata is broken */
-  bool m_setAFII = false;
-
-  // for calo based isolation vars leakage correction
-  bool        m_useDataDrivenLeakageCorr = false;
+  /** @brief Apply isolation correction, not needed by default */
+  bool m_applyIsolationCorrection = false;
 
 private:
   int m_numEvent;         //!
   int m_numObject;        //!
-
-  bool m_isMC;            //!
 
   std::string m_outAuxContainerName;
   std::string m_outSCContainerName;

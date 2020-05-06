@@ -5,8 +5,6 @@ from __future__ import print_function
 import logging
 logger = logging.getLogger("xAH.utils")
 
-from PathResolver import PathResolver
-
 import json
 import os
 import random
@@ -16,6 +14,7 @@ class NameGenerator(object):
   adjectives = None
   animals = None
   def __init__(self):
+    from PathResolver import PathResolver
     if self.__class__.adjectives is None:
       self.__class__.adjectives = file(PathResolver.FindCalibFile("xAODAnaHelpers/xAH_adjectives")).read().splitlines()
     if self.__class__.animals is None:
@@ -26,13 +25,17 @@ class NameGenerator(object):
   def __str__(self):
     return self.__repr__()
 
-
-def is_release20():
-  return int(os.environ.get('ROOTCORE_RELEASE_SERIES', 0)) < 25
-
 def is_release21():
-  return not is_release20()
+  return True
 
+## Find ASG analysis type (e.g. Base, Top) from a given list.  Return first option, or else None
+def findFrameworkTypeFromList(ASG_framework_list):
+  ASG_framework_types = [ ASGtype for ASGtype in ASG_framework_list if int( os.environ.get('Analysis'+ASGtype+'_SET_UP', 0) ) ]
+
+  if len(ASG_framework_types) == 0:
+    return None
+  else:
+    return ASG_framework_types[0]
 
 class ColoredFormatter(logging.Formatter):
   RESET_SEQ = "\033[0m"
@@ -102,3 +105,20 @@ def parse_json(filename):
     # Return json file
     return json.loads(content)
 
+# this registers the provided dictionary of cli-options on an argparse.ArgumentParser object
+def register_on_parser(cli_options, parser):
+    for optName, optConfig in cli_options.items():
+        # no flags specified? that's fine, use '--{optName}' as default
+        flags = optConfig.pop("flags", ["--{0:s}".format(optName)])
+        parser.add_argument(*flags, **optConfig)
+
+def update_clioption_defaults(argdict, newvalues):
+  """Update the default fields of an argument definition dictionary from cli-options.
+
+  Keyword arguments:
+  argdict -- reference to the argument definitions
+  newvalues -- dictionary with the argument name as key and new default value as value
+  """
+
+  for key,value in newvalues.items():
+    if key in argdict: argdict[key]['default']=value

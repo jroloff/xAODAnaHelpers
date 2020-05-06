@@ -11,6 +11,8 @@
 #include "AsgTools/StatusCode.h"
 #include <AsgTools/MessageCheck.h>
 
+#include <SampleHandler/SampleHandler.h>
+
 // jet reclustering and trimming
 #include <fastjet/JetDefinition.hh>
 #include "xAODJet/JetContainer.h"
@@ -36,8 +38,21 @@
 // messaging includes
 #include <AsgTools/MsgStream.h>
 
-namespace HelperFunctions {
+// Functions that need to have a dictionary built. PyROOT does not
+// seem to like the HelperFunctions namespace for some reason.
+namespace xAH {
 
+  /**
+   * @brief Directly add a SampleGrid to a SamplerHandler listing several datasets.
+   * @param sh SampleHander to which the sample will be added to
+   * @param name Name of the sample
+   * @param list List of datasets to be included in the sample
+   */
+  void addRucio(SH::SampleHandler& sh, const std::string& name, const std::string& dslist);
+
+} // close namespace xAH
+
+namespace HelperFunctions {
   /**
     Static object that provides athena-based message logging functionality
   */
@@ -65,15 +80,7 @@ namespace HelperFunctions {
 
     Source: http://stackoverflow.com/questions/18972258/index-of-nth-occurrence-of-the-string
   */
-  std::size_t string_pos( const std::string& inputstr, const char& occurence, int n_occurencies );
-
-  /**
-    Function which returns the WP for ISO/ID from a config file.
-    Returns empty string if no WP is found.
-
-  */
-  std::string parse_wp( const std::string& type, const std::string& config_name, MsgStream& msg );
-  inline std::string parse_wp( const std::string& type, const std::string& config_name ) { return parse_wp(type, config_name, msg()); }
+  std::size_t string_pos( const std::string& haystack, const std::string& needle, unsigned int N );
 
   /*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*\
   |                                                                            |
@@ -142,7 +149,7 @@ namespace HelperFunctions {
 
 
   // miscellaneous
-  bool sort_pt(xAOD::IParticle* partA, xAOD::IParticle* partB);
+  bool sort_pt(const xAOD::IParticle* partA, const xAOD::IParticle* partB);
 
   /**
     @brief Get a list of systematics
@@ -274,9 +281,13 @@ namespace HelperFunctions {
   template <typename T>
   StatusCode retrieve(T*& cont, std::string name, xAOD::TEvent* event, xAOD::TStore* store, MsgStream& msg){
     std::string funcName{"in retrieve<"+type_name<T>()+">(" + name + "): "};
+    if((event == NULL) && (store == NULL)){
+      msg << MSG::ERROR << funcName << "Both TEvent and TStore objects are null. Cannot retrieve anything." << endmsg;
+      return StatusCode::FAILURE;
+    }
     msg << MSG::DEBUG << funcName << "\tAttempting to retrieve " << name << " of type " << type_name<T>() << endmsg;
-    if(store == NULL)                      msg << MSG::DEBUG << funcName << "\t\tLooking inside: xAOD::TEvent" << endmsg;
-    if(event == NULL)                      msg << MSG::DEBUG << funcName << "\t\tLooking inside: xAOD::TStore" << endmsg;
+    if((event != NULL) && (store == NULL)) msg << MSG::DEBUG << funcName << "\t\tLooking inside: xAOD::TEvent" << endmsg;
+    if((event == NULL) && (store != NULL)) msg << MSG::DEBUG << funcName << "\t\tLooking inside: xAOD::TStore" << endmsg;
     if((event != NULL) && (store != NULL)) msg << MSG::DEBUG << funcName << "\t\tLooking inside: xAOD::TStore, xAOD::TEvent" << endmsg;
     if((store != NULL) && (store->contains<T>(name))){
       msg << MSG::DEBUG << funcName << "\t\t\tFound inside xAOD::TStore" << endmsg;
@@ -296,7 +307,7 @@ namespace HelperFunctions {
   template <typename T>
   StatusCode retrieve(T*& cont, std::string name, xAOD::TEvent* event, xAOD::TStore* store) { return retrieve<T>(cont, name, event, store, msg()); }
   template <typename T>
-  StatusCode retrieve(T*& cont, std::string name, xAOD::TEvent* event, xAOD::TStore* store, bool debug) { msg() << MSG::WARNING << "retrieve<T>(..., bool) is deprecated. See https://github.com/UCATLAS/xAODAnaHelpers/pull/882" << endmsg; return retrieve<T>(cont, name, event, store, msg()); }
+  StatusCode __attribute__((deprecated("retrieve<T>(..., bool) is deprecated. See https://github.com/UCATLAS/xAODAnaHelpers/pull/882"))) retrieve(T*& cont, std::string name, xAOD::TEvent* event, xAOD::TStore* store, bool debug) { return retrieve<T>(cont, name, event, store, msg()); }
 
   /** @brief Return true if an arbitrary object from TStore / TEvent is available
     @param name  the name of the object to look up
@@ -340,6 +351,7 @@ namespace HelperFunctions {
       msg << MSG::DEBUG << funcName << "\t\t\tFound inside xAOD::TEvent" << endmsg;
       return true;
     } else {
+      msg << MSG::DEBUG << funcName << "\t\tNot found at all" << endmsg;
       return false;
     }
     return false;
@@ -506,6 +518,25 @@ namespace HelperFunctions {
     std::sort(vec.begin(), vec.end());
     vec.erase(std::unique(vec.begin(), vec.end()), vec.end());
   }
+
+  /// @brief The different supported shower types
+  enum ShowerType {Unknown, Pythia8, Herwig7, Sherpa21, Sherpa22};
+
+  /**
+    @brief Determines the type of generator used for the shower from the sample name
+    @param sample_name      The name of the sample, usualy the dataset name
+
+    @rst
+    The name of the generator is determined using some common definitions in the ATLAS MC dataset naming scheme. The 
+    case independent strings that are searched for are:
+     * PYTHIA8EVTGEN or Py8EG or PYTHIA : Pythia8
+     * HERWIG : Herwig7
+     * SHERPA_CT : Sherpa21
+     * SHERPA : Sherpa22 (if not Sherpa 21)
+    @endrst
+   */
+  ShowerType getMCShowerType(const std::string& sample_name);
+
 
 } // close namespace HelperFunctions
 

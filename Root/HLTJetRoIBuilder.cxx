@@ -85,7 +85,7 @@ EL::StatusCode HLTJetRoIBuilder :: initialize ()
   m_store = wk()->xaodStore();
 
   // Grab the TrigDecTool from the ToolStore
-  if(!setToolName(m_trigDecTool_handle, m_trigDecTool_name)){
+  if(!m_trigDecTool_handle.isUserConfigured()){
     ANA_MSG_FATAL("A configured " << m_trigDecTool_handle.typeAndName() << " must have been previously created! Are you creating one in xAH::BasicEventSelection?" );
     return EL::StatusCode::FAILURE;
   }
@@ -148,6 +148,7 @@ EL::StatusCode HLTJetRoIBuilder :: execute ()
 
 EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 {
+  ANA_MSG_VERBOSE(" "  );
   auto triggerChainGroup = m_trigDecTool_handle->getChainGroup(m_trigItem);
 
   std::vector<std::string> triggersUsed = triggerChainGroup->getListOfTriggers();
@@ -171,19 +172,21 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
     firstItem = false;
   }
 
-  ANA_MSG_DEBUG(m_name << " " << m_trigItem << " matches");
-  ANA_MSG_DEBUG(m_trigItemAfterVeto);
+  ANA_MSG_VERBOSE(m_name << " " << m_trigItem << " matches");
+  ANA_MSG_VERBOSE(m_trigItemAfterVeto);
   auto triggerChainGroupAfterVeto = m_trigDecTool_handle->getChainGroup(m_trigItemAfterVeto);
   std::vector<std::string> triggersUsedAfterVeto = triggerChainGroupAfterVeto->getListOfTriggers();
   for(std::string trig : triggersUsedAfterVeto){
-    ANA_MSG_DEBUG(" \t " << trig);
+    ANA_MSG_VERBOSE(" \t " << trig);
+    if(m_trigDecTool_handle->isPassed(trig))
+      ANA_MSG_VERBOSE(" \t " << trig << " Passed "  );
   }
 
 
   //
   // Create the new container and its auxiliary store.
   //
-  ANA_MSG_DEBUG("Creating the new container ");
+  ANA_MSG_VERBOSE("Creating the new container ");
   xAOD::JetContainer*     hltJets    = new xAOD::JetContainer();
   xAOD::JetAuxContainer*  hltJetsAux = new xAOD::JetAuxContainer();
   hltJets->setStore( hltJetsAux ); //< Connect the two
@@ -191,7 +194,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
   //
   //  For Adding Tracks to the Jet
   //
-  ANA_MSG_DEBUG("Making the decorators ");
+  ANA_MSG_VERBOSE("Making the decorators ");
   static xAOD::Jet::Decorator<std::vector<const xAOD::TrackParticle*> > m_track_decoration      ("HLTBJetTracks");
   static xAOD::Jet::Decorator<const xAOD::Vertex*>                 m_vtx_decoration        ("HLTBJetTracks_vtx");
   static xAOD::Jet::Decorator<const xAOD::Vertex*>                 m_vtx_decoration_bkg    ("HLTBJetTracks_vtx_bkg");
@@ -206,13 +209,11 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
   //
   // get primary vertex
   //
-  ANA_MSG_DEBUG("Getting the PV ");
+  ANA_MSG_VERBOSE("Getting the PV ");
   const xAOD::VertexContainer *offline_vertices(nullptr);
   const xAOD::Vertex *offline_pvx(nullptr);
-  if(HelperFunctions::isAvailable<xAOD::VertexContainer>("PrimaryVertices", m_event, m_store, msg())){
-    ANA_CHECK( HelperFunctions::retrieve(offline_vertices, "PrimaryVertices", m_event, m_store, msg()) );
-    offline_pvx = HelperFunctions::getPrimaryVertex(offline_vertices, msg());
-  }
+  ANA_CHECK( HelperFunctions::retrieve(offline_vertices, m_vertexContainerName, m_event, m_store, msg()) );
+  offline_pvx = HelperFunctions::getPrimaryVertex(offline_vertices, msg());
 
   //
   // get event info
@@ -229,8 +230,9 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
   Trig::FeatureContainer fc = m_trigDecTool_handle->features(m_trigItemAfterVeto, TrigDefs::Physics );
   Trig::FeatureContainer::combination_const_iterator comb   (fc.getCombinations().begin());
   Trig::FeatureContainer::combination_const_iterator combEnd(fc.getCombinations().end());
-  ANA_MSG_DEBUG( m_name << " New Event --------------- ");
-
+  ANA_MSG_VERBOSE( m_name << " New Event --------------- ");
+  ANA_MSG_VERBOSE( " Event Pass? " << m_trigDecTool_handle->isPassed(m_trigItemAfterVeto) );
+  ANA_MSG_VERBOSE( " comb size " << fc.getCombinations().size());
   for( ; comb!=combEnd ; ++comb) {
     std::vector< Trig::Feature<xAOD::JetContainer> >            jetCollections  = comb->containerFeature<xAOD::JetContainer>(m_jetName);
     std::vector< Trig::Feature<xAOD::BTaggingContainer> >       bjetCollections = comb->containerFeature<xAOD::BTaggingContainer>("HLTBjetFex");
@@ -265,6 +267,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
     //ANA_MSG_INFO(" \tPrimVertexFTKRaw " << comb->containerFeature<xAOD::VertexContainer>("PrimVertexFTKRaw").size());
     //ANA_MSG_INFO(" \tPrimVertexFTKRefit " << comb->containerFeature<xAOD::VertexContainer>("PrimVertexFTKRefit").size();
     //ANA_MSG_INFO(" \tHLT_PrimVertexFTK " << comb->containerFeature<xAOD::VertexContainer>("HLT_PrimVertexFTK").size());
+
     //
     //    std::vector<Trig::Feature<xAOD::VertexContainer> > EvtxCollections = comb->containerFeature<xAOD::VertexContainer>();
     //    for ( unsigned ifeat=0 ; ifeat<EvtxCollections.size() ; ifeat++ ) {
@@ -276,7 +279,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 
     bool isValid = true;
 
-    ANA_MSG_DEBUG("ncontainers  " << bjetCollections.size());
+    ANA_MSG_VERBOSE("ncontainers  " << bjetCollections.size());
 
     if(jetCollections.size() != bjetCollections.size()){
       ANA_MSG_ERROR("Problem in container size: " << m_name << " jets: "<< jetCollections.size() << " bjets: "<< bjetCollections.size());
@@ -284,10 +287,10 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 
       auto triggerChainGroupAfterVeto = m_trigDecTool_handle->getChainGroup(m_trigItemAfterVeto);
       std::vector<std::string> triggersUsedAfterVeto = triggerChainGroupAfterVeto->getListOfTriggers();
-      ANA_MSG_DEBUG("Passed Triggers ");
+      ANA_MSG_VERBOSE("Passed Triggers ");
       for(std::string trig : triggersUsedAfterVeto){
         auto trigChain = m_trigDecTool_handle->getChainGroup(trig);
-        if(trigChain->isPassed()) ANA_MSG_DEBUG(" \t " << trig);
+        if(trigChain->isPassed()) ANA_MSG_VERBOSE(" \t " << trig);
       }
 
     }
@@ -327,7 +330,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
     float var_bs_online_vy = m_onlineBSTool.getOnlineBSInfo(eventInfo, xAH::OnlineBeamSpotTool::BSData::BSy);
     float var_bs_online_vz = m_onlineBSTool.getOnlineBSInfo(eventInfo, xAH::OnlineBeamSpotTool::BSData::BSz);
 
-    ANA_MSG_DEBUG(" bs_online_vx " << var_bs_online_vx << " bs_online_vy " << var_bs_online_vy << " bs_online_vz " << var_bs_online_vz);
+    ANA_MSG_VERBOSE(" bs_online_vx " << var_bs_online_vx << " bs_online_vy " << var_bs_online_vy << " bs_online_vz " << var_bs_online_vz);
 
 
     //ANA_MSG_INFO(" is Valid " << jetCollections.size() << " " << vtxCollections.size());
@@ -337,11 +340,31 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 
       bool passOverlap = true;
       for( const xAOD::Jet* previousJet : *hltJets){
-	if(previousJet->p4().DeltaR(hlt_jet->p4()) < 0.4) passOverlap = false;
+	if(previousJet->p4().DeltaR(hlt_jet->p4()) < 0.1){
+	  const xAOD::BTagging *p_btag_info = previousJet->auxdata< const xAOD::BTagging* >("HLTBTag");
+	  double p_mv2c10 = -99;
+	  p_btag_info->MVx_discriminant("MV2c10", p_mv2c10);
+
+	  double this_mv2c10 = -99;
+	  const xAOD::BTagging* hlt_btag = getTrigObject<xAOD::BTagging, xAOD::BTaggingContainer>(bjetCollections.at(ifeat));
+	  if(hlt_btag){
+	    hlt_btag->MVx_discriminant("MV2c10", this_mv2c10);
+	  }
+
+	  if(fabs(p_mv2c10 - this_mv2c10) > 0.01){
+	    std::cout << "ERROR:: Previous mv2c10 " << p_mv2c10 << " this mv2c10 "  << this_mv2c10 << std::endl;
+	    std::cout << "Previous Jet: pt: " << previousJet->pt() << " eta: " << previousJet->eta() << " phi: " << previousJet->phi() << std::endl;;
+	    std::cout << "This Jet: pt: " << hlt_jet->pt() << " eta: " << hlt_jet->eta() << " phi: " << hlt_jet->phi() << std::endl;;
+	  }
+	  passOverlap = false;
+	}
       }
 
-      if(!passOverlap) continue;
-      ANA_MSG_DEBUG("New Jet: pt: " << hlt_jet->pt() << " eta: " << hlt_jet->eta() << " phi: " << hlt_jet->phi());
+      if(!passOverlap){
+	ANA_MSG_VERBOSE(" Jet Failed overlap " );
+	continue;
+      }
+      ANA_MSG_VERBOSE("New Jet: pt: " << hlt_jet->pt() << " eta: " << hlt_jet->eta() << " phi: " << hlt_jet->phi());
 
       const xAOD::BTagging* hlt_btag = getTrigObject<xAOD::BTagging, xAOD::BTaggingContainer>(bjetCollections.at(ifeat));
       if(!hlt_btag) continue;
@@ -366,10 +389,10 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
       if(m_readHLTTracks){
 
         std::vector<const xAOD::TrackParticle*> matchedTracks;
-	ANA_MSG_DEBUG("Trk Size" << hlt_tracks->size());
+	ANA_MSG_VERBOSE("Trk Size" << hlt_tracks->size());
 
 	for(const xAOD::TrackParticle* thisHLTTrk: *hlt_tracks){
-	  ANA_MSG_DEBUG("\tAdding  track " << thisHLTTrk->pt()   << " " << thisHLTTrk->eta()  << " " << thisHLTTrk->phi());
+	  ANA_MSG_VERBOSE("\tAdding  track " << thisHLTTrk->pt()   << " " << thisHLTTrk->eta()  << " " << thisHLTTrk->phi());
 	  matchedTracks.push_back(thisHLTTrk);
 	}
 
@@ -378,23 +401,23 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 	//
 
 	if(hlt_tracks->size()){
-	  ANA_MSG_DEBUG("Found a hlt_tracks   " << hlt_tracks->at(0)->vx() << " " << hlt_tracks->at(0)->vy() << " " << hlt_tracks->at(0)->vz());
-	  ANA_MSG_DEBUG("Compares to variable " << " " << var_bs_online_vx << " " << var_bs_online_vy << " " << var_bs_online_vz);
+	  ANA_MSG_VERBOSE("Found a hlt_tracks   " << hlt_tracks->at(0)->vx() << " " << hlt_tracks->at(0)->vy() << " " << hlt_tracks->at(0)->vz());
+	  ANA_MSG_VERBOSE("Compares to variable " << " " << var_bs_online_vx << " " << var_bs_online_vy << " " << var_bs_online_vz);
 	}
 
 	m_bs_online_vx (*newHLTBJet) = var_bs_online_vx;
 	m_bs_online_vy (*newHLTBJet) = var_bs_online_vy;
 	m_bs_online_vz (*newHLTBJet) = var_bs_online_vz;
 
-	ANA_MSG_DEBUG("Adding tracks to jet ");
+	ANA_MSG_VERBOSE("Adding tracks to jet ");
 	m_track_decoration(*newHLTBJet)         = matchedTracks;
 
 
       }
 
-      ANA_MSG_DEBUG("Doing it for:        " << m_trigItem);
-      ANA_MSG_DEBUG("Check for m_jetName: " << m_jetName);
-      ANA_MSG_DEBUG("Check for m_vtxName: " << m_vtxName);
+      ANA_MSG_VERBOSE("Doing it for:        " << m_trigItem);
+      ANA_MSG_VERBOSE("Check for m_jetName: " << m_jetName);
+      ANA_MSG_VERBOSE("Check for m_vtxName: " << m_vtxName);
 
       //
       // Check for dummy verticies
@@ -406,17 +429,17 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
       if(m_readHLTVtx){
 	if(!HelperFunctions::getPrimaryVertex(vtxCollections.at(ifeat).cptr(), msg())){
 
-	  ANA_MSG_DEBUG("HAVE  No Online Vtx!!! m_vtxName is  " << m_vtxName);
-	  for( auto vtx_itr : *(vtxCollections.at(ifeat).cptr()) ) ANA_MSG_DEBUG(vtx_itr->vertexType());
+	  ANA_MSG_VERBOSE("HAVE  No Online Vtx!!! m_vtxName is  " << m_vtxName);
+	  for( auto vtx_itr : *(vtxCollections.at(ifeat).cptr()) ) ANA_MSG_VERBOSE(vtx_itr->vertexType());
 
 	  //
 	  //  Try the HistoPrmVtx
 	  //
 	  if(backupVtxCollections.size()){
-	    ANA_MSG_DEBUG("Have EFHistoPrmVtx.  ");
+	    ANA_MSG_VERBOSE("Have EFHistoPrmVtx.  ");
 	    m_vtx_hadDummyPV  (*newHLTBJet)         = '1';
 	    const xAOD::Vertex *backup_pvx = HelperFunctions::getPrimaryVertex(backupVtxCollections.at(ifeat).cptr(), msg());
-	    ANA_MSG_DEBUG("backup_pvx.  " << backup_pvx);
+	    ANA_MSG_VERBOSE("backup_pvx.  " << backup_pvx);
 	    m_vtx_decoration  (*newHLTBJet)         = backup_pvx;
 	    m_vtx_decoration_bkg(*newHLTBJet)       = backup_pvx;
 	  }else{
@@ -443,7 +466,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 
 	m_offline_vtx_decoration (*newHLTBJet)  = offline_pvx;
 
-	ANA_MSG_DEBUG("hadDummy and vtxType" << m_vtx_hadDummyPV (*newHLTBJet) << " " << m_vtxName);
+	ANA_MSG_VERBOSE("hadDummy and vtxType" << m_vtx_hadDummyPV (*newHLTBJet) << " " << m_vtxName);
 	//if(m_vtx_hadDummyPV (*newHLTBJet) != '0' ){
 	//   ANA_MSG_INFO("hadDummy and vtxType and m_outContainerName  " << m_vtx_hadDummyPV (*newHLTBJet) << " "
 	//	<< m_vtxName << ' '<< m_outContainerName);
@@ -457,7 +480,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
       }
 
       hltJets->push_back( newHLTBJet );
-      ANA_MSG_DEBUG("pushed back ");
+      ANA_MSG_VERBOSE("pushed back ");
 
     }//feature
 
@@ -475,7 +498,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTBJets ()
 
 EL::StatusCode HLTJetRoIBuilder :: buildHLTJets ()
 {
-  ANA_MSG_DEBUG("In buildHLTJets  ");
+  ANA_MSG_VERBOSE("In buildHLTJets  ");
   //
   // Create the new container and its auxiliary store.
   //
@@ -486,7 +509,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTJets ()
   Trig::FeatureContainer fc = m_trigDecTool_handle->features(m_trigItem);
   auto jetFeatureContainers = fc.containerFeature<xAOD::JetContainer>();
 
-  ANA_MSG_DEBUG("ncontainers  " << jetFeatureContainers.size());
+  ANA_MSG_VERBOSE("ncontainers  " << jetFeatureContainers.size());
 
   //DataModel_detail::const_iterator<JetContainer >::reference {aka const xAOD::Jet_v1*}
 
@@ -502,7 +525,7 @@ EL::StatusCode HLTJetRoIBuilder :: buildHLTJets ()
 
   ANA_CHECK( m_store->record( hltJets,    m_outContainerName));
   ANA_CHECK( m_store->record( hltJetsAux, m_outContainerName+"Aux."));
-  ANA_MSG_DEBUG("Left buildHLTJets  ");
+  ANA_MSG_VERBOSE("Left buildHLTJets  ");
   return EL::StatusCode::SUCCESS;
 }
 

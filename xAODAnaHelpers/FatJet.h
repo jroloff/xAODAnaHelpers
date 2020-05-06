@@ -47,6 +47,9 @@ namespace xAH {
       float  NTrimSubjets;
       int    NClusters;
       int    nTracks;
+      int    ungrtrk500;
+      float  EMFrac;
+      int    nChargedParticles;
 
       // constituent
       int    numConstituents;
@@ -58,6 +61,9 @@ namespace xAH {
       std::vector<float>  constituent_phi;
       std::vector<float>  constituent_e;
 
+      // truth
+      TLorentzVector truth_p4;
+      
       // bosons 
       int nTQuarks;
       int nHBosons;
@@ -71,8 +77,13 @@ namespace xAH {
       int Wtag_tight;
       int Ztag_tight;
 
-      std::vector<xAH::Jet> trkJets;
-      
+      std::unordered_map<std::string, std::vector<xAH::Jet>> trkJets;
+
+      // muonCorrection
+      float muonCorrected_pt;
+      float muonCorrected_eta;
+      float muonCorrected_phi;
+      float muonCorrected_m;
     };
 
 }//xAH

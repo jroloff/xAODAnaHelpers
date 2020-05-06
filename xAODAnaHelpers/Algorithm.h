@@ -5,10 +5,12 @@
 #include "xAODRootAccess/Init.h"
 #include "xAODRootAccess/TEvent.h"
 #include "xAODRootAccess/TStore.h"
+#include "xAODMetaData/FileMetaData.h"
 
 // EL include(s):
 #include <EventLoop/StatusCode.h>
 #include <EventLoop/Algorithm.h>
+#include <EventLoop/Worker.h>
 
 #include <string>
 
@@ -24,6 +26,7 @@
 #include <AsgTools/MsgStream.h>
 #include <AsgTools/MsgStreamMacros.h>
 #include <AsgTools/MessageCheck.h>
+
 
 namespace xAH {
 
@@ -74,19 +77,19 @@ namespace xAH {
         /// @endcond
 
         /**
-            @brief Run any initializations commmon to all xAH Algorithms (such as registerInstance). Call this inside :code:`histInitialize` for best results.
+            @brief Run any initializations commmon to all xAH Algorithms (such as registerInstance). Call this inside ``histInitialize`` for best results.
          */
         StatusCode algInitialize();
 
         /**
-            @brief Run any finalizations common to all xAH Algorithms (such as unregisterInstance). Call this inside :code:`histFinalize` for best results.
+            @brief Run any finalizations common to all xAH Algorithms (such as unregisterInstance). Call this inside ``histFinalize`` for best results.
          */
         StatusCode algFinalize();
 
         /**
             @brief All algorithms initialized should have a unique name, to differentiate them at the TObject level.
 
-            Note, :code:`GetName()` returns a :code:`char*` while this returns a :code:`std::string`.
+            Note, ``GetName()`` returns a ``char*`` while this returns a ``std::string``.
         */
         std::string m_name = "UnnamedAlgorithm";
 
@@ -123,9 +126,12 @@ namespace xAH {
         /** If the xAOD has a different EventInfo container name, set it here */
         std::string m_eventInfoContainerName = "EventInfo";
 
+        /** If the xAOD has a different PrimaryVertex container name, set it here */
+        std::string m_vertexContainerName = "PrimaryVertices";
+
         /**
             @rst
-                This is an override at the algorithm level to force analyzing MC or not.
+                This stores the isMC decision, and can also be used to override at the algorithm level to force analyzing MC or not.
 
                 ===== ========================================================
                 Value Meaning
@@ -138,6 +144,31 @@ namespace xAH {
             @endrst
          */
         int m_isMC = -1;
+
+        /**
+            @rst
+                This stores the isFastSim decision, and can also be used to override at the algorithm level to force analyzing FastSim or not.
+
+                ===== ========================================================
+                Value Meaning
+                ===== ========================================================
+                -1    Default, use Metadata object to determine if FullSim or FastSim
+                0     Treat the input as FullSim
+                1     Treat the input as FastSim
+                ===== ========================================================
+
+            @endrst
+         */
+        int m_isFastSim = -1;
+
+        /** Flags to force a specific data-type, even if it disagrees with your input */
+        bool m_forceFastSim = false;
+        bool m_forceFullSim = false;
+        bool m_forceData    = false;
+
+        /** Backwards compatibility, same as m_forceFastSim */
+        bool m_setAFII = false;
+
 
       protected:
         /**
@@ -153,23 +184,41 @@ namespace xAH {
         /** The TStore object */
         xAOD::TStore* m_store = nullptr; //!
 
-        // will try to determine if data or if MC
-        // returns: -1=unknown (could not determine), 0=data, 1=mc
         /**
             @rst
-                Try to determine if we are running over data or MC.
+                Try to determine if we are running over data or MC. The :cpp:member:`xAH::Algorithm::m_isMC` can be used
+		to fix the return value. Otherwise the `EventInfo` object is queried.
+
+		An exception is thrown if the type cannot be determined.
 
                 ============ =======
                 Return Value Meaning
                 ============ =======
-                -1           Unknown
                 0            Data
                 1            MC
                 ============ =======
 
             @endrst
          */
-        int isMC();
+        bool isMC();
+        
+        /**
+            @rst
+                Try to determine if we are running over data or MC. The :cpp:member:`xAH::Algorithm::m_isFastSim` can be used
+		to fix the return value. Otherwise the metadata is queried.
+
+		An exception is thrown if the type cannot be determined.
+
+                ============ =======
+                Return Value Meaning
+                ============ =======
+                0            FullSim (or Data)
+                1            FastSim
+                ============ =======
+
+            @endrst
+         */
+        bool isFastSim();
 
         /**
             @rst
@@ -240,25 +289,18 @@ namespace xAH {
 
         /**
             @rst
-                Sets the name of the tool and emits :code:`ANA_MSG_WARNING` if the tool of given type/name has been configured previously.
+	              .. warning: This function does nothing in release 21! The native private tool mechanism is used instead.
 
-                The reason this exists is to unify setting the tool name correctly. |xAH| is choosing the convention that you always set the type of the tool in the header, but not the name. The name, if it needs to be configurable, will be set during algorithm execution, such as in :code:`histInitialize()`. If no name is needed, the tool will use the name of the algorithm plus a unique identifier (:cpp:func:`xAH::Algorithm::getAddress`) appended to ensure the tool is unique and effectively private.
+                Sets the name of a tool. If no name is needed, the tool will use the name of the algorithm plus a unique identifier (:cpp:func:`xAH::Algorithm::getAddress`) appended to ensure the tool is unique and effectively private.
 
                 The tool will not be guaranteed unique if two tools of the same type are created without a name passed in. But this is, at this point, up to the user and a more complex scenario than what this function tries to simplify on its own.
 
             @endrst
          */
         template <typename T>
-        bool setToolName(asg::AnaToolHandle<T>& handle, std::string name = "") const {
-          if(name.empty()) name = handle.name() + "_" + m_name + "::" + getAddress();
-          handle.setName(name);
-          ANA_MSG_DEBUG("Trying to set-up tool: " << handle.typeAndName());
-          bool res = handle.isUserConfigured();
-          if (res) ANA_MSG_WARNING("note: handle " << handle.typeAndName() << " is user configured. If this is expected, ignore the message. If it is not expected, look into " << m_className + "::" << m_name << ", check documentation, or ask around.");
-          return res;
-        }
+	void setToolName(__attribute__((unused)) asg::AnaToolHandle<T>& handle, __attribute__((unused)) const std::string& name = "") const { }
 
-        /// @brief Return a :code:`std::string` representation of :code:`this`
+        /// @brief Return a ``std::string`` representation of ``this``
         std::string getAddress() const {
           const void * address = static_cast<const void*>(this);
           std::stringstream ss;
@@ -283,7 +325,7 @@ namespace xAH {
 
             @endrst
          */
-        static std::map<std::string, int> m_instanceRegistry;
+        static std::map<std::string, int> m_instanceRegistry; //!
 
         /**
             @rst

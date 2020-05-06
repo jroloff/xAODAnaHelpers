@@ -34,21 +34,16 @@ namespace xAH {
     
     private:
 
+      // kinematic
+      std::vector<float> *m_charge;
+
       // trigger
       std::vector<int>               *m_isTrigMatched;
       std::vector<std::vector<int> > *m_isTrigMatchedToChain;
       std::vector<std::string>       *m_listTrigChains;
     
       // isolation
-      std::vector<int>   *m_isIsolated_LooseTrackOnly;
-      std::vector<int>   *m_isIsolated_Loose;
-      std::vector<int>   *m_isIsolated_Tight;
-      std::vector<int>   *m_isIsolated_Gradient;
-      std::vector<int>   *m_isIsolated_GradientLoose;
-      std::vector<int>   *m_isIsolated_FixedCutLoose;
-      std::vector<int>   *m_isIsolated_FixedCutTightTrackOnly;
-      std::vector<int>   *m_isIsolated_UserDefinedFixEfficiency;
-      std::vector<int>   *m_isIsolated_UserDefinedCut;
+      std::map< std::string, std::vector< int > >* m_isIsolated;
       std::vector<float> *m_ptcone20;
       std::vector<float> *m_ptcone30;
       std::vector<float> *m_ptcone40;
@@ -58,13 +53,10 @@ namespace xAH {
       std::vector<float> *m_topoetcone20;
       std::vector<float> *m_topoetcone30;
       std::vector<float> *m_topoetcone40;
-    
+
       // quality
-      std::vector<int>   *m_isVeryLoose;
-      std::vector<int>   *m_isLoose;
-      std::vector<int>   *m_isMedium;
-      std::vector<int>   *m_isTight;
-    
+      std::map< std::string, std::vector< int > >* m_quality;
+
       // scale factors w/ sys
       // per object
       std::vector< std::vector< float > > *m_TTVAEff_SF;
@@ -104,7 +96,21 @@ namespace xAH {
       std::vector<float>         *m_ParamEnergyLoss;
       std::vector<float>         *m_ParamEnergyLossSigmaMinus;
       std::vector<float>         *m_ParamEnergyLossSigmaPlus;
-    
+
+      // prompt lepton
+      std::vector<float>* m_PromptLeptonInput_DL1mu;
+      std::vector<float>* m_PromptLeptonInput_DRlj;
+      std::vector<float>* m_PromptLeptonInput_LepJetPtFrac;
+      std::vector<float>* m_PromptLeptonInput_PtFrac;
+      std::vector<float>* m_PromptLeptonInput_PtRel;
+      std::vector<int>*   m_PromptLeptonInput_TrackJetNTrack;
+      std::vector<float>* m_PromptLeptonInput_ip2;
+      std::vector<float>* m_PromptLeptonInput_ip3;
+      std::vector<float>* m_PromptLeptonInput_rnnip;
+      std::vector<int>*   m_PromptLeptonInput_sv1_jf_ntrkv;
+      std::vector<float>* m_PromptLeptonIso;
+      std::vector<float>* m_PromptLeptonVeto;
+
     };
 }
 #endif // xAODAnaHelpers_MuonContainer_H

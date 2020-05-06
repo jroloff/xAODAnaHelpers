@@ -37,7 +37,8 @@ public:
   // configuration variables
   std::string   m_inContainerName = "";
 
-  std::string   m_calibRelease = "Data15_allPeriods_241115";
+  /// @brief Recommendations release (not recommended to change)
+  std::string   m_overrideCalibRelease = "";
 
   // Reco efficiency SF
   std::string   m_WorkingPointReco = "Loose";
@@ -45,17 +46,9 @@ public:
   // Iso efficiency SF
   std::string   m_WorkingPointIso = "LooseTrackOnly";
 
-  // Trigger efficiency SF
-  int           m_runNumber2015 = 276329;
-  int           m_runNumber2016 = 300345;
-  bool          m_useRandomRunNumber = true;
   /// @brief Use with caution!!!
   bool          m_AllowZeroSF = false;
-  std::string   m_WorkingPointRecoTrig = "Loose";
-  std::string   m_WorkingPointIsoTrig = "LooseTrackOnly";
-  /// @brief comma-separated list of years
-  std::string   m_Years = "2016";
-  std::string   m_MCCampaign = "";
+
   /// @brief list of comma-separated single-mu trigger corrections. Individual legs of di-mu menus can be parsed
   std::string   m_MuTrigLegs = "HLT_mu26_imedium";
 
@@ -87,12 +80,6 @@ public:
   std::string   m_outputSystNamesTTVA = "MuonEfficiencyCorrector_TTVASyst";
 
 private:
-
-  xAOD::TEvent *m_event;  //!
-  xAOD::TStore *m_store;  //!
-
-  bool m_isMC;            //!
-
   int m_numEvent;         //!
   int m_numObject;        //!
 
@@ -100,21 +87,20 @@ private:
   std::vector<CP::SystematicSet> m_systListIso;  //!
   std::vector<CP::SystematicSet> m_systListTrig; //!
   std::vector<CP::SystematicSet> m_systListTTVA; //!
-  
+
   std::string m_outputSystNamesTrigBase; //!
 
   // tools
-  asg::AnaToolHandle<CP::IPileupReweightingTool> m_pileup_tool_handle;     //!
+  asg::AnaToolHandle<CP::IPileupReweightingTool> m_pileup_tool_handle{"CP::PileupReweightingTool/Pileup"}; //!
   CP::MuonEfficiencyScaleFactors* m_muRecoSF_tool = nullptr;               //!
   std::string m_recoEffSF_tool_name;                                       //!
   CP::MuonEfficiencyScaleFactors* m_muIsoSF_tool = nullptr;                //!
   std::string m_isoEffSF_tool_name;                                        //!
-  std::map<std::string, CP::MuonTriggerScaleFactors*>  m_muTrigSF_tools;   //!
-  std::map<std::string, std::string> m_trigEffSF_tool_names;               //!
-  std::vector<std::string> m_YearsList;                                    //!
+  CP::MuonTriggerScaleFactors* m_muTrigSF_tool = nullptr;                  //!
+  std::string m_trigEffSF_tool_name;                                       //!
   CP::MuonEfficiencyScaleFactors* m_muTTVASF_tool = nullptr;               //!
   std::string m_TTVAEffSF_tool_name;                                       //!
-  std::vector<std::string> m_SingleMuTriggers;                             //!
+  std::map<std::string, std::string> m_SingleMuTriggerMap; //!
 
   // variables that don't get filled at submission time should be
   // protected from being send from the submission node to the worker

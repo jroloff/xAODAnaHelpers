@@ -9,19 +9,17 @@
 #include "xAODRootAccess/TStore.h"
 #include "AsgTools/AnaToolHandle.h"
 
+#include "METInterface/IMETMaker.h"
+#include "METInterface/IMETSystematicsTool.h"
+#include "METInterface/IMETSignificance.h"
+
+#include "TauAnalysisTools/ITauSelectionTool.h"
 
 #include "PATInterfaces/SystematicRegistry.h"
 //look at https://twiki.cern.ch/twiki/bin/view/AtlasComputing/SoftwareTutorialxAODAnalysisInROOT
 
 
 using std::string;
-
-
-class IMETMaker;
-class IMETSystematicsTool;
-
-namespace TauAnalysisTools { class TauSelectionTool; }
-
 
 class METConstructor : public xAH::Algorithm
 {
@@ -30,21 +28,15 @@ class METConstructor : public xAH::Algorithm
 public:
 
   // configuration variables
-  TString m_referenceMETContainer = "MET_Reference_AntiKt4LCTopo";
-  TString m_mapName = "METAssoc_AntiKt4LCTopo";
-  TString m_coreName = "MET_Core_AntiKt4LCTopo";
-  TString m_outputContainer = "NewRefFinal";
-  TString m_inputJets = "";
-  TString m_inputElectrons = "";
-  TString m_inputPhotons = "";
-  TString m_inputTaus = "";
-  TString m_inputMuons = "";
-
-
-  //std::string  m_inputAlgoJets;  // name of vector<string> of syst retrieved from TStore
-  //std::string  m_inputAlgoSystMuons;  // name of vector<string> of syst retrieved from TStore
-  //std::string  m_inputAlgoSystEle;  // name of vector<string> of syst retrieved from TStore
-  //std::string m_inputAlgoPhotons; // name of vector<string> of syst retrieved from TStore
+  std::string m_referenceMETContainer = "MET_Reference_AntiKt4LCTopo";
+  std::string m_mapName = "METAssoc_AntiKt4LCTopo";
+  std::string m_coreName = "MET_Core_AntiKt4LCTopo";
+  std::string m_outputContainer = "NewRefFinal";
+  std::string m_inputJets = "";
+  std::string m_inputElectrons = "";
+  std::string m_inputPhotons = "";
+  std::string m_inputTaus = "";
+  std::string m_inputMuons = "";
 
   bool    m_doElectronCuts = false;
   bool    m_doPhotonCuts = false;
@@ -56,6 +48,9 @@ public:
   bool    m_doJVTCut = false;
   bool    m_dofJVTCut = false;
 
+  /// @brief To turn on p-flow MET calculation set m_doPFlow to true
+  bool    m_doPFlow = false;
+
   /// Rebuild MET using tracks in calo jets
   bool    m_rebuildUsingTracksInJets = false;
   /**
@@ -66,17 +61,23 @@ public:
   */
   bool    m_addSoftClusterTerms = false;
 
+  // MET significance
+  /// @brief Enable MET significance calculation
+  bool m_calculateSignificance = false;
+  /// @brief Introduce "resolution" for jets with low JVT, if the analysis is sensitive to pileup jets
+  bool m_significanceTreatPUJets = true;
+  /// @brief Set soft term resolution
+  double m_significanceSoftTermReso = 10.0;
+
   // used for systematics
   /// @brief set to false if you want to run met systematics
   bool m_runNominal = true;
   /// @brief do not change it, not useful
   std::string m_systName = "All";
   float m_systVal = 1.0;
-  
+
   /// @brief Write systematics names to metadata
   bool        m_writeSystToMetadata = false;
-
-  std::string m_SoftTermSystConfigFile = "TrackSoftTerms.config";
 
   /** @rst
         Name of jet systematics vector from  :cpp:class:`~JetCalibrator`.
@@ -94,6 +95,11 @@ public:
    */
   std::string m_muonSystematics = "";
   /** @rst
+        Name of tau systematics vector from  :cpp:class:`~TauCalibrator`.
+      @endrst
+   */
+  std::string m_tauSystematics = "";
+  /** @rst
         Name of photon systematics vector from :cpp:class:`~PhotonCalibrator`.
       @endrst
    */
@@ -103,20 +109,14 @@ public:
 
 
 private:
-  bool m_isMC; //!
-
-  xAOD::TEvent *m_event;  //!
-  xAOD::TStore *m_store;  //!
-
   // tools
-  asg::AnaToolHandle<IMETMaker> m_metmaker_handle; //!
+  asg::AnaToolHandle<IMETMaker> m_metmaker_handle{"met::METMaker/METMaker", this}; //!
+  asg::AnaToolHandle<IMETSystematicsTool> m_metSyst_handle{"met::METSystematicsTool/METSystematicsTool", this}; //!
+  asg::AnaToolHandle<IMETSignificance> m_metSignificance_handle{"met::METSignificance/METSignificance", this}; //!
 
-  asg::AnaToolHandle<IMETSystematicsTool> m_metSyst_handle; //!
+  asg::AnaToolHandle<TauAnalysisTools::ITauSelectionTool> m_tauSelTool_handle{"TauAnalysisTools::TauSelectionTool/TauSelectionTool", this}; //!
 
-  TauAnalysisTools::TauSelectionTool* m_tauSelTool; //!
-
-  TString coreMetKey;
-  std::vector<CP::SystematicSet> sysList; //!
+  std::vector<CP::SystematicSet> m_sysList; //!
 
   int m_numEvent;         //!
 

@@ -18,6 +18,7 @@
 #include <xAODAnaHelpers/JetCalibrator.h>
 #include <xAODAnaHelpers/ClusterUncertaintyTool.h>
 #include <xAODAnaHelpers/MuonCalibrator.h>
+#include <xAODAnaHelpers/TauCalibrator.h>
 /*#include <xAODAnaHelpers/GroomedFatJets.h>*/
 #include <xAODAnaHelpers/HLTJetRoIBuilder.h>
 #include <xAODAnaHelpers/HLTJetGetter.h>
@@ -29,6 +30,7 @@
 /* Scale Factors */
 #include <xAODAnaHelpers/ElectronEfficiencyCorrector.h>
 #include <xAODAnaHelpers/MuonEfficiencyCorrector.h>
+#include <xAODAnaHelpers/TauEfficiencyCorrector.h>
 #include <xAODAnaHelpers/BJetEfficiencyCorrector.h>
 
 /* Plotting Tools */
@@ -48,10 +50,13 @@
 #include <xAODAnaHelpers/MinixAOD.h>
 
 /* Other */
+#include <xAODAnaHelpers/HelperFunctions.h>
 #include <xAODAnaHelpers/OverlapRemover.h>
 #include <xAODAnaHelpers/TrigMatcher.h>
+#include <xAODAnaHelpers/TauJetMatching.h>
 #include <xAODAnaHelpers/Writer.h>
 #include <xAODAnaHelpers/MessagePrinterAlgo.h>
+#include <xAODAnaHelpers/MuonInFatJetCorrector.h>
 
 #ifdef __CINT__
 
@@ -59,6 +64,9 @@
 #pragma link off all classes;
 #pragma link off all functions;
 #pragma link C++ nestedclass;
+
+#pragma link C++ namespace xAH;
+#pragma link C++ function xAH::addRucio;
 
 #pragma link C++ class xAH::Algorithm+;
 
@@ -77,6 +85,7 @@
 #pragma link C++ class JetCalibrator+;
 #pragma link C++ class HLTJetRoIBuilder+;
 #pragma link C++ class MuonCalibrator+;
+#pragma link C++ class TauCalibrator+;
 #pragma link C++ class HLTJetGetter+;
 /*#pragma link C++ class GroomedFatJets+;*/
 
@@ -86,6 +95,7 @@
 
 #pragma link C++ class ElectronEfficiencyCorrector+;
 #pragma link C++ class MuonEfficiencyCorrector+;
+#pragma link C++ class TauEfficiencyCorrector+;
 #pragma link C++ class BJetEfficiencyCorrector+;
 
 #pragma link C++ class JetMaker+;
@@ -104,6 +114,9 @@
 
 #pragma link C++ class OverlapRemover+;
 #pragma link C++ class TrigMatcher+;
+#pragma link C++ class TauJetMatching+;
 #pragma link C++ class Writer+;
 #pragma link C++ class MessagePrinterAlgo+;
+#pragma link C++ class MuonInFatJetCorrector+;
+
 #endif

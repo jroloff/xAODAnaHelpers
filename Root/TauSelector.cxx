@@ -2,6 +2,7 @@
  *
  * Interface to TauAnalysisTools::TauSelectionTool
  *
+ * F. Scutti (federico.scutti@cern.ch)
  * M. Milesi (marco.milesi@cern.ch)
  *
  ************************************************/
@@ -9,6 +10,7 @@
 // c++ include(s):
 #include <iostream>
 #include <typeinfo>
+#include <map>
 
 // EL include(s):
 #include <EventLoop/Job.h>
@@ -26,6 +28,9 @@
 #include "xAODAnaHelpers/HelperClasses.h"
 #include "xAODAnaHelpers/HelperFunctions.h"
 #include "PATCore/TAccept.h"
+// tool includes
+#include "TauAnalysisTools/TauSelectionTool.h"  
+#include "TriggerMatchingTool/MatchingTool.h"
 
 // ROOT include(s):
 #include "TFile.h"
@@ -72,6 +77,12 @@ EL::StatusCode TauSelector :: histInitialize ()
 
   ANA_MSG_INFO( "Calling histInitialize");
   ANA_CHECK( xAH::Algorithm::algInitialize());
+
+  if ( this->numInstances() > 1 ) {
+    m_isUsedBefore = true;
+    ANA_MSG_INFO( "\t An algorithm of the same type has been already used " << numInstances() << " times" );
+  }
+
   return EL::StatusCode::SUCCESS;
 }
 
@@ -122,10 +133,6 @@ EL::StatusCode TauSelector :: initialize ()
   // preselecting objects, and then again for the final selection
   //
   ANA_MSG_INFO( "Algorithm name: " << m_name << " - of type " << m_className );
-  if ( this->numInstances() > 0 ) {
-    m_isUsedBefore = true;
-    ANA_MSG_INFO( "\t An algorithm of the same type has been already used " << numInstances() << " times" );
-  }
 
   if ( m_useCutFlow ) {
 
@@ -181,21 +188,83 @@ EL::StatusCode TauSelector :: initialize ()
   //
   // ********************************
 
-  std::string sel_tool_name = std::string("TauSelectionTool_") + m_name;
-  m_TauSelTool = new TauAnalysisTools::TauSelectionTool( sel_tool_name );
-  m_TauSelTool->msg().setLevel( MSG::INFO ); // VERBOSE, INFO, DEBUG
-
-  ANA_CHECK( m_TauSelTool->setProperty("ConfigPath",PathResolverFindDataFile(m_ConfigPath).c_str()));
-  if ( !m_EleOLRFilePath.empty() ) {
-    ANA_CHECK( m_TauSelTool->setProperty("EleOLRFilePath",PathResolverFindDataFile(m_EleOLRFilePath).c_str()));
+  // IMPORTANT: if no working point is specified the one in this configuration will be used
+  ANA_CHECK( m_tauSelTool_handle.setProperty("ConfigPath",PathResolverFindDataFile(m_ConfigPath).c_str()));
+  if (!m_JetIDWP.empty()) {
+    
+    std::map <std::string, int> jetid_wp_map;
+    
+    jetid_wp_map["JETIDNONE"] = int(TauAnalysisTools::JETIDNONE);
+    jetid_wp_map["JETIDBDTLOOSE"] = int(TauAnalysisTools::JETIDBDTLOOSE);
+    jetid_wp_map["JETIDBDTMEDIUM"] = int(TauAnalysisTools::JETIDBDTMEDIUM);
+    jetid_wp_map["JETIDBDTTIGHT"] = int(TauAnalysisTools::JETIDBDTTIGHT);
+    jetid_wp_map["JETIDBDTLOOSENOTTIGHT"] = int(TauAnalysisTools::JETIDBDTLOOSENOTTIGHT);
+    jetid_wp_map["JETIDBDTLOOSENOTMEDIUM"] = int(TauAnalysisTools::JETIDBDTLOOSENOTMEDIUM);
+    jetid_wp_map["JETIDBDTMEDIUMNOTTIGHT"] = int(TauAnalysisTools::JETIDBDTMEDIUMNOTTIGHT);
+    jetid_wp_map["JETIDBDTNOTLOOSE"] = int(TauAnalysisTools::JETIDBDTNOTLOOSE);
+    jetid_wp_map["JETIDBDTVERYLOOSE"] = int(TauAnalysisTools::JETIDBDTVERYLOOSE);
+    
+    if (jetid_wp_map.count(m_JetIDWP) != 0 ) {
+      ANA_CHECK( m_tauSelTool_handle.setProperty("JetIDWP", jetid_wp_map[m_JetIDWP]));
+    } else {
+      ANA_MSG_ERROR( "Unknown requested tau JetIDWP " << m_JetIDWP);
+      return EL::StatusCode::FAILURE; 
+    }
   }
-  ANA_CHECK( m_TauSelTool->initialize());
 
-  if ( m_setTauOverlappingEleLLHDecor ) {
-    std::string eleOLR_tool_name = std::string("TauOverlappingElectronLLHDecorator_") + m_name;
-    m_TOELLHDecorator = new TauAnalysisTools::TauOverlappingElectronLLHDecorator( eleOLR_tool_name );
-    m_TOELLHDecorator->msg().setLevel( MSG::INFO ); // VERBOSE, INFO, DEBUG
-    ANA_CHECK( m_TOELLHDecorator->initialize());
+  if (!m_EleBDTWP.empty()) {
+    
+    std::map <std::string, int> elebdt_wp_map;
+    
+    elebdt_wp_map["ELEIDNONE"] = int(TauAnalysisTools::ELEIDNONE);
+    elebdt_wp_map["ELEIDBDTLOOSE"] = int(TauAnalysisTools::ELEIDBDTLOOSE);
+    elebdt_wp_map["ELEIDBDTMEDIUM"] = int(TauAnalysisTools::ELEIDBDTMEDIUM);
+    elebdt_wp_map["ELEIDBDTTIGHT"] = int(TauAnalysisTools::ELEIDBDTTIGHT);
+    
+    if (elebdt_wp_map.count(m_EleBDTWP) != 0 ) {
+      ANA_CHECK( m_tauSelTool_handle.setProperty("EleBDTWP", elebdt_wp_map[m_EleBDTWP]));
+    } else {
+      ANA_MSG_ERROR( "Unknown requested tau EleBDTWP " << m_EleBDTWP);
+      return EL::StatusCode::FAILURE; 
+    }
+  }
+
+  ANA_CHECK( m_tauSelTool_handle.setProperty("EleOLR", m_EleOLR));
+
+  ANA_CHECK(m_tauSelTool_handle.retrieve());
+  ANA_MSG_DEBUG("Retrieved tool: " << m_tauSelTool_handle);
+
+  // **************************************
+  //
+  // Initialise Trig::MatchingTool
+  //
+  // **************************************
+  if( !( m_singleTauTrigChains.empty() && m_diTauTrigChains.empty() ) ) {
+    // Grab the TrigDecTool from the ToolStore
+    if(!m_trigDecTool_handle.isUserConfigured()){
+      ANA_MSG_FATAL("A configured " << m_trigDecTool_handle.typeAndName() << " must have been previously created! Are you creating one in xAH::BasicEventSelection?" );
+      return EL::StatusCode::FAILURE;
+    }
+    ANA_CHECK( m_trigDecTool_handle.retrieve());
+    ANA_MSG_DEBUG("Retrieved tool: " << m_trigDecTool_handle);
+
+    //  everything went fine, let's initialise the tool!
+    ANA_CHECK( m_trigTauMatchTool_handle.setProperty( "TrigDecisionTool", m_trigDecTool_handle ));
+    ANA_CHECK( m_trigTauMatchTool_handle.setProperty("OutputLevel", msg().level() ));
+    ANA_CHECK( m_trigTauMatchTool_handle.retrieve());
+    ANA_MSG_DEBUG("Retrieved tool: " << m_trigTauMatchTool_handle);
+
+  } else {
+
+    m_doTrigMatch = false;
+
+    ANA_MSG_WARNING("***********************************************************");
+    ANA_MSG_WARNING( "Will not perform any tau trigger matching at this stage b/c :");
+    ANA_MSG_WARNING("\t -) could not find the TrigDecisionTool in asg::ToolStore");
+    ANA_MSG_WARNING("\t AND/OR");
+    ANA_MSG_WARNING("\t -) all input HLT trigger chain lists are empty");
+    ANA_MSG_WARNING("However, if you really didn't want to do the matching now, it's all good!");
+    ANA_MSG_WARNING("***********************************************************");
   }
 
   ANA_MSG_INFO( "TauSelector Interface succesfully initialized!" );
@@ -226,6 +295,36 @@ EL::StatusCode TauSelector :: execute ()
   mcEvtWeight = mcEvtWeightAcc( *eventInfo );
 
   m_numEvent++;
+
+  // QUESTION: why this must be done in execute(), and does not work in initialize()?
+  //
+  if ( m_numEvent == 1 && m_trigDecTool_handle.isInitialized() ) {
+
+    // parse input tau trigger chain list, split by comma and fill vector
+    //
+    std::string singletau_trig;
+    std::istringstream ss_singletau_trig(m_singleTauTrigChains);
+
+    while ( std::getline(ss_singletau_trig, singletau_trig, ',') ) {
+   	m_singleTauTrigChainsList.push_back(singletau_trig);
+    }
+
+    std::string ditau_trig;
+    std::istringstream ss_ditau_trig(m_diTauTrigChains);
+
+    while ( std::getline(ss_ditau_trig, ditau_trig, ',') ) {
+   	m_diTauTrigChainsList.push_back(ditau_trig);
+    }
+
+    ANA_MSG_INFO( "Input single tau trigger chains that will be considered for matching:\n");
+    for ( auto const &chain : m_singleTauTrigChainsList ) { ANA_MSG_INFO( "\t " << chain); }
+    ANA_MSG_INFO( "\n");
+
+    ANA_MSG_INFO( "Input di-tau trigger chains that will be considered for matching:\n");
+    for ( auto const &chain : m_diTauTrigChainsList ) { ANA_MSG_INFO( "\t " << chain); }
+    ANA_MSG_INFO( "\n");
+
+  }
 
   // did any collection pass the cuts?
   //
@@ -273,7 +372,7 @@ EL::StatusCode TauSelector :: execute ()
     // prepare a vector of the names of CDV containers for usage by downstream algos
     // must be a pointer to be recorded in TStore
     //
-    std::vector< std::string >* vecOutContainerNames = new std::vector< std::string >;
+    auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
     ANA_MSG_DEBUG( " input list of syst size: " << static_cast<int>(systNames->size()) );
 
     // loop over systematic sets
@@ -325,7 +424,7 @@ EL::StatusCode TauSelector :: execute ()
 
     // record in TStore the list of systematics names that should be considered down stream
     //
-    ANA_CHECK( m_store->record( vecOutContainerNames, m_outputAlgoSystNames));
+    ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgoSystNames));
 
   }
 
@@ -393,7 +492,7 @@ bool TauSelector :: executeSelection ( const xAOD::TauJetContainer* inTaus, floa
     ANA_MSG_DEBUG( "Reject event: nSelectedTaus ("<<nPass<<") < nPassMin ("<<m_pass_min<<")" );
     return false;
   }
-  if ( m_pass_max > 0 && nPass > m_pass_max ) {
+  if ( m_pass_max >= 0 && nPass > m_pass_max ) {
     ANA_MSG_DEBUG( "Reject event: nSelectedTaus ("<<nPass<<") > nPassMax ("<<m_pass_max<<")" );
     return false;
   }
@@ -404,6 +503,113 @@ bool TauSelector :: executeSelection ( const xAOD::TauJetContainer* inTaus, floa
     m_numEventPass++;
     m_weightNumEventPass += mcEvtWeight;
   }
+
+
+  // Perform trigger matching on the "good" (selected) taus
+  //
+  // NB: this part will be skipped if:
+  //
+  //  1. the user didn't pass any trigger chains to the algo (see initialize(): in that case, the tool is not even initialised!)
+  //  2. there are no selected taus in the event
+  //
+  if ( m_doTrigMatch && selectedTaus ) {
+
+    unsigned int nSelectedTaus = selectedTaus->size();
+
+    static SG::AuxElement::Decorator< std::map<std::string,char> > isTrigMatchedMapTauDecor( "isTrigMatchedMapTau" );
+
+    if ( nSelectedTaus > 0 ) {
+
+      ANA_MSG_DEBUG( "Doing single tau trigger matching...");
+
+      for ( auto const &chain : m_singleTauTrigChainsList ) {
+
+        ANA_MSG_DEBUG( "\t checking trigger chain " << chain);
+
+        for ( auto const tau : *selectedTaus ) {
+
+          //  For each tau, decorate w/ a map<string,char> with the 'isMatched' info associated
+          //  to each trigger chain in the input list.
+          //  If decoration map doesn't exist for this tau yet, create it (will be done only for the 1st iteration on the chain names)
+          //
+          if ( !isTrigMatchedMapTauDecor.isAvailable( *tau ) ) {
+            isTrigMatchedMapTauDecor( *tau ) = std::map<std::string,char>();
+          }
+
+          // check whether the tau is matched (NOTE: no DR is required for taus)
+          //
+          char matched = ( m_trigTauMatchTool_handle->match( *tau, chain ) );
+
+          ANA_MSG_DEBUG( "\t\t is tau trigger matched? " << matched);
+
+          ( isTrigMatchedMapTauDecor( *tau ) )[chain] = matched;
+        }
+      }
+
+    }
+
+    // If checking dilepton trigger, form lepton pairs and test matching for each one.
+    // Save a:
+    //
+    // multimap< chain, pair< pair<idx_i, idx_j>, ismatched > >
+    //
+    // as *event* decoration to store which
+    // pairs are matched (to a given chain) and which aren't.
+    // A multimap is used b/c a given key (i.e., a chain) can be associated to more than one pair. This is the case for e.g., trilepton events.
+    //
+    // By retrieving this map later on, user can decide what to do with the event
+    // (Generally one could just loop over the map and save a flag if there's at least one pair that matches a given chain)
+
+    if ( nSelectedTaus > 1 && !m_diTauTrigChains.empty() ) {
+
+      ANA_MSG_DEBUG( "Doing di-tau trigger matching...");
+
+      const xAOD::EventInfo* eventInfo(nullptr);
+      ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
+
+      typedef std::pair< std::pair<unsigned int,unsigned int>, char> ditau_trigmatch_pair;
+      typedef std::multimap< std::string, ditau_trigmatch_pair >    ditau_trigmatch_pair_map;
+      static SG::AuxElement::Decorator< ditau_trigmatch_pair_map >  diTauTrigMatchPairMapDecor( "diTauTrigMatchPairMap" );
+
+      for ( auto const &chain : m_diTauTrigChainsList ) {
+
+      	ANA_MSG_DEBUG( "\t checking trigger chain " << chain);
+
+      	//  If decoration map doesn't exist for this event yet, create it (will be done only for the 1st iteration on the chain names)
+      	//
+      	if ( !diTauTrigMatchPairMapDecor.isAvailable( *eventInfo ) ) {
+          diTauTrigMatchPairMapDecor( *eventInfo ) = ditau_trigmatch_pair_map();
+      	}
+
+      	std::vector<const xAOD::IParticle*> myTaus;
+
+      	for ( unsigned int itau = 0; itau < selectedTaus->size()-1; ++itau ) {
+
+      	  for ( unsigned int jtau = itau+1; jtau < selectedTaus->size(); ++jtau ) {
+
+            // test a new pair
+            //
+      	    myTaus.clear();
+      	    myTaus.push_back( selectedTaus->at(itau) );
+      	    myTaus.push_back( selectedTaus->at(jtau) );
+
+            // check whether the pair is matched (NOTE: no DR is required for taus)
+            //
+      	    char matched = m_trigTauMatchTool_handle->match( myTaus, chain  );
+
+      	    ANA_MSG_DEBUG( "\t\t is the tau pair ("<<itau<<","<<jtau<<") trigger matched? " << matched);
+
+      	    std::pair <unsigned int, unsigned int>  chain_idxs = std::make_pair(itau,jtau);
+            ditau_trigmatch_pair  chain_decision = std::make_pair(chain_idxs,matched);
+            diTauTrigMatchPairMapDecor( *eventInfo ).insert( std::pair< std::string, ditau_trigmatch_pair >(chain,chain_decision) );
+
+      	  }
+      	}
+      } //for m_diTauTrigChainsList
+    } //if nSelectedTaus > 1 && !m_diTauTrigChains.empty()
+  } //if m_doTrigMatch && selectedTaus
+
+  ANA_MSG_DEBUG( "Left  executeSelection..." );
 
   return true;
 }
@@ -433,11 +639,6 @@ EL::StatusCode TauSelector :: finalize ()
   // submission node after all your histogram outputs have been
   // merged.  This is different from histFinalize() in that it only
   // gets called on worker nodes that processed input events.
-
-  ANA_MSG_INFO( "Deleting tool instances...");
-
-  if ( m_TauSelTool )      { m_TauSelTool = nullptr;      delete m_TauSelTool; }
-  if ( m_TOELLHDecorator ) { m_TOELLHDecorator = nullptr; delete m_TOELLHDecorator; }
 
   if ( m_useCutFlow ) {
     ANA_MSG_INFO( "Filling cutflow");
@@ -471,7 +672,7 @@ EL::StatusCode TauSelector :: histFinalize ()
 int TauSelector :: passCuts( const xAOD::TauJet* tau ) {
 
   // fill cutflow bin 'all' before any cut
-  if(m_useCutFlow) m_tau_cutflowHist_1->Fill( m_tau_cutflow_all, 1 );
+  if(!m_isUsedBefore && m_useCutFlow) m_tau_cutflowHist_1->Fill( m_tau_cutflow_all, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_tau_cutflowHist_2->Fill( m_tau_cutflow_all, 1 ); }
 
   // **********************************************************************************************************
@@ -479,21 +680,114 @@ int TauSelector :: passCuts( const xAOD::TauJet* tau ) {
   // TauSelectorTool cut
   //
 
+  // JetBDTSigID decoration
+  // ----------------------
+  static SG::AuxElement::Decorator< int > isJetBDTSigVeryLoose("isJetBDTSigVeryLoose");
+  static SG::AuxElement::Decorator< int > isJetBDTSigLoose("isJetBDTSigLoose");
+  static SG::AuxElement::Decorator< int > isJetBDTSigMedium("isJetBDTSigMedium");
+  static SG::AuxElement::Decorator< int > isJetBDTSigTight("isJetBDTSigTight");
+
+  static SG::AuxElement::Decorator< float > JetBDTScore("JetBDTScore");
+  static SG::AuxElement::Decorator< float > JetBDTScoreSigTrans("JetBDTScoreSigTrans");
+  
+
+  isJetBDTSigVeryLoose( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::JetBDTSigVeryLoose));
+  isJetBDTSigLoose( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::JetBDTSigLoose));
+  isJetBDTSigMedium( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::JetBDTSigMedium));
+  isJetBDTSigTight( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::JetBDTSigTight));
+
+  JetBDTScore( *tau ) = static_cast<float>(tau->discriminant(xAOD::TauJetParameters::BDTJetScore));
+  JetBDTScoreSigTrans( *tau ) = static_cast<float>(tau->discriminant(xAOD::TauJetParameters::BDTJetScoreSigTrans));
+
+  // EleBDT decoration
+  // -----------------
+  static SG::AuxElement::Decorator< int > isEleBDTLoose("isEleBDTLoose");
+  static SG::AuxElement::Decorator< int > isEleBDTMedium("isEleBDTMedium");
+  static SG::AuxElement::Decorator< int > isEleBDTTight("isEleBDTTight");
+
+  static SG::AuxElement::Decorator< float > EleBDTScore("EleBDTScore");
+  
+
+  isEleBDTLoose( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::EleBDTLoose));
+  isEleBDTMedium( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::EleBDTMedium));
+  isEleBDTTight( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::EleBDTTight));
+
+  EleBDTScore( *tau ) = static_cast<float>(tau->discriminant(xAOD::TauJetParameters::BDTEleScore));
+
+
+  // EleOLR decoration
+  // -----------------
+  static SG::AuxElement::Decorator< int > passEleOLR("passEleOLR");
+  
+  passEleOLR( *tau ) = static_cast<int>(tau->isTau(xAOD::TauJetParameters::PassEleOLR));
+
+  if (m_decorateWithTracks) {
+
+     // TauTracks decoration
+     // --------------------
+     SG::AuxElement::Decorator< std::vector<float> > tauTrackPt( "trackPt" );
+     SG::AuxElement::Decorator< std::vector<float> > tauTrackEta( "trackEta" );
+     SG::AuxElement::Decorator< std::vector<float> > tauTrackPhi( "trackPhi" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackIsCore( "trackIsCore" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackIsWide( "trackIsWide" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackFailTrackFilter( "trackFailTrackFilter" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackPassTrkSel( "trackPassTrkSel" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackIsClCharged( "trackIsClCharged" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackIsClIso( "trackIsClIso" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackIsClConv( "trackIsClConv" );
+     SG::AuxElement::Decorator< std::vector<int> > tauTrackIsClFake( "trackIsClFake" );
+     
+     
+     for (const xAOD::TauTrack* trk : tau->allTracks()){
+      
+        tauTrackPt( *tau ).push_back(trk->pt());
+        tauTrackEta( *tau ).push_back(trk->eta());
+        tauTrackPhi( *tau ).push_back(trk->phi());
+     
+     
+        if (!trk->flag(xAOD::TauJetParameters::coreTrack)) tauTrackIsCore(*tau).push_back(1);
+        else tauTrackIsCore(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::wideTrack)) tauTrackIsWide(*tau).push_back(1);
+        else tauTrackIsWide(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::failTrackFilter)) tauTrackFailTrackFilter(*tau).push_back(1);
+        else tauTrackFailTrackFilter(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::passTrkSelector)) tauTrackPassTrkSel(*tau).push_back(1);
+        else tauTrackPassTrkSel(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::classifiedCharged)) tauTrackIsClCharged(*tau).push_back(1);
+        else tauTrackIsClCharged(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::classifiedIsolation)) tauTrackIsClIso(*tau).push_back(1);
+        else tauTrackIsClIso(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::classifiedConversion)) tauTrackIsClConv(*tau).push_back(1);
+        else tauTrackIsClConv(*tau).push_back(0);
+     
+        if (!trk->flag(xAOD::TauJetParameters::classifiedFake)) tauTrackIsClFake(*tau).push_back(1);
+        else tauTrackIsClFake(*tau).push_back(0);
+     
+     }
+
+  } // if decorate with tracks
+  
+  ANA_MSG_DEBUG( "Got decoration values" );
+
+
   if ( tau->pt() <= m_minPtDAOD ) {
     ANA_MSG_DEBUG( "Tau failed minimal pT requirement for usage with derivations");
     return 0;
   }
 
-  if ( m_setTauOverlappingEleLLHDecor ) { m_TOELLHDecorator->decorate( *tau ); }
-
-  if ( ! m_TauSelTool->accept( *tau ) ) {
+  if ( ! m_tauSelTool_handle->accept( *tau ) ) {
     ANA_MSG_DEBUG( "Tau failed requirements of TauSelectionTool");
     return 0;
   }
 
-  if(m_useCutFlow) m_tau_cutflowHist_1->Fill( m_tau_cutflow_selected, 1 );
+  if( !m_isUsedBefore && m_useCutFlow) m_tau_cutflowHist_1->Fill( m_tau_cutflow_selected, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_tau_cutflowHist_2->Fill( m_tau_cutflow_selected, 1 ); }
 
   return 1;
 }
-

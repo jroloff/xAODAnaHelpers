@@ -127,13 +127,6 @@ EL::StatusCode ElectronCalibrator :: initialize ()
   m_outSCContainerName      = m_outContainerName + "ShallowCopy";
   m_outSCAuxContainerName   = m_outSCContainerName + "Aux."; // the period is very important!
 
-
-  // Check if is MC
-  //
-  const xAOD::EventInfo* eventInfo(nullptr);
-  ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
-  m_isMC = eventInfo->eventType( xAOD::EventInfo::IS_SIMULATION );
-
   m_numEvent      = 0;
   m_numObject     = 0;
 
@@ -147,28 +140,13 @@ EL::StatusCode ElectronCalibrator :: initialize ()
   m_EgammaCalibrationAndSmearingTool->msg().setLevel( MSG::ERROR ); // DEBUG, VERBOSE, INFO
   ANA_CHECK( m_EgammaCalibrationAndSmearingTool->setProperty("ESModel", m_esModel));
   ANA_CHECK( m_EgammaCalibrationAndSmearingTool->setProperty("decorrelationModel", m_decorrelationModel));
+
   //
   // For AFII samples
   //
-  if ( m_isMC ) {
-
-    // Check simulation flavour for calibration config - cannot directly read metadata in xAOD otside of Athena!
-    //
-    // N.B.: With SampleHandler, you can define sample metadata in job steering macro!
-    //
-    //       They will be passed to the EL:;Worker automatically and can be retrieved anywhere in the EL::Algorithm
-    //       I reasonably suppose everyone will use SH...
-    //
-    //       IMPORTANT! the metadata name set in SH *must* be "AFII" (if not set, name will be *empty_string*)
-    //
-    const std::string stringMeta = wk()->metaData()->castString("SimulationFlavour");
-
-    if ( m_setAFII || ( !stringMeta.empty() && ( stringMeta.find("AFII") != std::string::npos ) ) ){
-
-      ANA_MSG_INFO( "Setting simulation flavour to AFII");
-      ANA_CHECK( m_EgammaCalibrationAndSmearingTool->setProperty("useAFII", 1));
-
-    }
+  if ( isFastSim() ){
+    ANA_MSG_INFO( "Setting simulation flavour to AFII");
+    ANA_CHECK( m_EgammaCalibrationAndSmearingTool->setProperty("useAFII", 1));
   }
   ANA_CHECK( m_EgammaCalibrationAndSmearingTool->initialize());
 
@@ -185,7 +163,7 @@ EL::StatusCode ElectronCalibrator :: initialize ()
   m_systList = HelperFunctions::getListofSystematics( recSyst, m_systName, m_systVal, msg() );
 
   ANA_MSG_INFO("Will be using EgammaCalibrationAndSmearingTool systematic:");
-  std::vector< std::string >* SystElectronsNames = new std::vector< std::string >;
+  auto SystElectronsNames = std::make_unique< std::vector< std::string > >();
   for ( const auto& syst_it : m_systList ) {
     if ( m_systName.empty() ) {
       ANA_MSG_INFO("\t Running w/ nominal configuration only!");
@@ -195,21 +173,23 @@ EL::StatusCode ElectronCalibrator :: initialize ()
     ANA_MSG_INFO("\t " << syst_it.name());
   }
 
-  ANA_CHECK(m_store->record(SystElectronsNames, "ele_Syst"+m_name ));
+  ANA_CHECK(m_store->record(std::move(SystElectronsNames), "ele_Syst"+m_name ));
 
   // ***********************************************************
 
   // initialize the CP::IsolationCorrectionTool
   //
-  if ( asg::ToolStore::contains<CP::IsolationCorrectionTool>("IsolationCorrectionTool") ) {
-    m_IsolationCorrectionTool = asg::ToolStore::get<CP::IsolationCorrectionTool>("IsolationCorrectionTool");
-  } else {
-    m_IsolationCorrectionTool = new CP::IsolationCorrectionTool("IsolationCorrectionTool");
+  if ( m_applyIsolationCorrection ) {
+    if ( asg::ToolStore::contains<CP::IsolationCorrectionTool>("IsolationCorrectionTool") ) {
+      m_IsolationCorrectionTool = asg::ToolStore::get<CP::IsolationCorrectionTool>("IsolationCorrectionTool");
+    } else {
+      m_IsolationCorrectionTool = new CP::IsolationCorrectionTool("IsolationCorrectionTool");
+    }
+    m_IsolationCorrectionTool->msg().setLevel( MSG::INFO ); // DEBUG, VERBOSE, INFO
+    ANA_CHECK( m_IsolationCorrectionTool->setProperty("IsMC", isMC() ));
+    ANA_CHECK( m_IsolationCorrectionTool->initialize());
+    ANA_MSG_INFO( "Applying electron isolation correction" );
   }
-  m_IsolationCorrectionTool->msg().setLevel( MSG::INFO ); // DEBUG, VERBOSE, INFO
-  //ANA_CHECK( m_IsolationCorrectionTool->setProperty("Apply_datadriven", m_useDataDrivenLeakageCorr ));
-  ANA_CHECK( m_IsolationCorrectionTool->setProperty("IsMC", m_isMC ));
-  ANA_CHECK( m_IsolationCorrectionTool->initialize());
 
   // Write output sys names
   if ( m_writeSystToMetadata ) {
@@ -247,7 +227,7 @@ EL::StatusCode ElectronCalibrator :: execute ()
   // prepare a vector of the names of CDV containers
   // must be a pointer to be recorded in TStore
   //
-  std::vector< std::string >* vecOutContainerNames = new std::vector< std::string >;
+  auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
 
   for ( const auto& syst_it : m_systList ) {
 
@@ -298,12 +278,15 @@ EL::StatusCode ElectronCalibrator :: execute ()
       // apply calibration (w/ syst) and leakage correction to calo based iso vars
       //
       if ( elSC_itr->caloCluster() && elSC_itr->trackParticle() ) {  // NB: derivations might remove CC and tracks for low pt electrons
-	if ( m_EgammaCalibrationAndSmearingTool->applyCorrection( *elSC_itr ) != CP::CorrectionCode::Ok ) {
-	  ANA_MSG_WARNING( "Problem in CP::EgammaCalibrationAndSmearingTool::applyCorrection()");
-	}
-	if ( elSC_itr->pt() > 7e3 && m_IsolationCorrectionTool->CorrectLeakage( *elSC_itr ) != CP::CorrectionCode::Ok ) {
-	  ANA_MSG_WARNING( "Problem in CP::IsolationCorrectionTool::CorrectLeakage()");
-	}
+        if ( m_EgammaCalibrationAndSmearingTool->applyCorrection( *elSC_itr ) != CP::CorrectionCode::Ok ) {
+          ANA_MSG_WARNING( "Problem in CP::EgammaCalibrationAndSmearingTool::applyCorrection()");
+        }
+
+        if ( m_applyIsolationCorrection ) {
+          if ( elSC_itr->pt() > 7e3 && m_IsolationCorrectionTool->CorrectLeakage( *elSC_itr ) != CP::CorrectionCode::Ok ) {
+            ANA_MSG_WARNING( "Problem in CP::IsolationCorrectionTool::CorrectLeakage()");
+          }
+        }
       }
 
       ANA_MSG_DEBUG( "Calibrated pt with systematic: " << syst_it.name() <<" , pt = " << elSC_itr->pt() * 1e-3 << " GeV");
@@ -337,7 +320,7 @@ EL::StatusCode ElectronCalibrator :: execute ()
 
   // add vector<string container_names_syst> to TStore
   //
-  ANA_CHECK( m_store->record( vecOutContainerNames, m_outputAlgoSystNames));
+  ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgoSystNames));
 
   // look what we have in TStore
   if(msgLvl(MSG::VERBOSE)) m_store->print();
@@ -372,8 +355,8 @@ EL::StatusCode ElectronCalibrator :: finalize ()
 
   ANA_MSG_INFO( "Deleting tool instances...");
 
-  if ( m_EgammaCalibrationAndSmearingTool ) { m_EgammaCalibrationAndSmearingTool = nullptr; delete m_EgammaCalibrationAndSmearingTool; }
-  if ( m_IsolationCorrectionTool )          { m_IsolationCorrectionTool = nullptr; delete m_IsolationCorrectionTool; }
+  if ( m_EgammaCalibrationAndSmearingTool ) { delete m_EgammaCalibrationAndSmearingTool; m_EgammaCalibrationAndSmearingTool = nullptr; }
+  if ( m_IsolationCorrectionTool )          { delete m_IsolationCorrectionTool; m_IsolationCorrectionTool = nullptr; }
 
   return EL::StatusCode::SUCCESS;
 }

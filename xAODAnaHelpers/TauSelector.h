@@ -4,13 +4,19 @@
 // EDM include(s):
 #include "xAODTau/TauJet.h"
 #include "xAODTau/TauJetContainer.h"
+#include "xAODTau/TauTrack.h"
 
 // ROOT include(s):
 #include "TH1D.h"
 
 // external tools include(s):
-#include "TauAnalysisTools/TauSelectionTool.h"
-#include "TauAnalysisTools/TauOverlappingElectronLLHDecorator.h"
+//#include "TauAnalysisTools/TauSelectionTool.h"
+#include "AsgTools/AnaToolHandle.h"
+#include "TrigDecisionTool/TrigDecisionTool.h"
+#include "TriggerMatchingTool/IMatchingTool.h"
+#include "TauAnalysisTools/ITauSelectionTool.h"
+
+//#include "TauAnalysisTools/TauOverlappingElectronLLHDecorator.h"
 
 // algorithm wrapper
 #include "xAODAnaHelpers/Algorithm.h"
@@ -34,6 +40,8 @@ public:
   std::string    m_outAuxContainerName;
   std::string    m_inputAlgoSystNames = "";
   std::string    m_outputAlgoSystNames = "TauSelector_Syst";
+  /* decorate selected taus with tracks */
+  bool       	 m_decorateWithTracks = false;
   /* decorate selected objects - default "passSel" */
   bool       	 m_decorateSelectedObjects = true;
   /* fill using SG::VIEW_ELEMENTS to be light weight */
@@ -45,15 +53,34 @@ public:
   /* maximum number of objects passing cuts */
   int            m_pass_max = -1;
   /* path to config file for the TauSelectionTool */
+
+  // IMPORTANT: if no working point is specified the one in this configuration will be used
   std::string    m_ConfigPath = "xAODAnaHelpers/TauConf/00-01-19/Selection/recommended_selection_mc15.conf";
-  /* path to input file for overlap-based electron veto */
-  std::string    m_EleOLRFilePath = "";
   /* a minimal pT threshold b/c some derivations may apply a thinning on tau tracks' features needed by the TauSelectionTool, which would cause a crash at runtime */
   float          m_minPtDAOD = 15e3;
+  std::string    m_JetIDWP = "";
+  std::string    m_EleBDTWP = "";
+  bool           m_EleOLR = true;
 
-
-
-  bool           m_setTauOverlappingEleLLHDecor = true;
+  /* trigger matching */
+  
+  /*
+   * A comma-separated string w/ all the HLT 
+   * single muon trigger chains for which you want 
+   * to perform the matching. If left empty (as it is by default), 
+   * no trigger matching will be attempted at all 
+   */
+  
+  std::string    m_singleTauTrigChains = "";
+  
+  /*
+   * A comma-separated string w/ all the HLT 
+   * dimuon trigger chains for which you want 
+   * to perform the matching.  If left empty (as it is by default), 
+   * no trigger matching will be attempted at all 
+   */
+  
+  std::string    m_diTauTrigChains = "";
 
 private:
 
@@ -78,9 +105,15 @@ private:
   int   m_tau_cutflow_selected;             //!
 
   // tools
-  TauAnalysisTools::TauSelectionTool  *m_TauSelTool ; //!
-  TauAnalysisTools::TauOverlappingElectronLLHDecorator *m_TOELLHDecorator; //!
+  std::vector<std::string>            m_singleTauTrigChainsList; //!  /* contains all the HLT trigger chains tokens extracted from m_singleTauTrigChains */
+  std::vector<std::string>            m_diTauTrigChainsList;     //!  /* contains all the HLT trigger chains tokens extracted from m_diTauTrigChains */
+  asg::AnaToolHandle<TauAnalysisTools::ITauSelectionTool> m_tauSelTool_handle{"TauAnalysisTools::TauSelectionTool/TauSelectionTool",     this}; //!
+  asg::AnaToolHandle<Trig::TrigDecisionTool>              m_trigDecTool_handle{"Trig::TrigDecisionTool/TrigDecisionTool"    }; //!
+  asg::AnaToolHandle<Trig::IMatchingTool>                 m_trigTauMatchTool_handle{"Trig::MatchingTool/MatchingTool",  this}; //!  
 
+  /// @brief This internal variable gets set to false if no triggers are defined or if TrigDecisionTool is missing
+  bool m_doTrigMatch = true; //!
+  
   // variables that don't get filled at submission time should be
   // protected from being send from the submission node to the worker
   // node (done by the //!)

@@ -13,21 +13,16 @@ namespace xAH {
     //Muon() {};
     //virtual ~Muon() { };
 
+    // kinematics
+    float charge;
+
     // trigger
     int               isTrigMatched;
     std::vector<int>  isTrigMatchedToChain;
     std::string       listTrigChains;
     
       // isolation
-    int   isIsolated_LooseTrackOnly;
-    int   isIsolated_Loose;
-    int   isIsolated_Tight;
-    int   isIsolated_Gradient;
-    int   isIsolated_GradientLoose;
-    int   isIsolated_FixedCutLoose;
-    int   isIsolated_FixedCutTightTrackOnly;
-    int   isIsolated_UserDefinedFixEfficiency;
-    int   isIsolated_UserDefinedCut;
+    std::map< std::string, int > isIsolated;
     float ptcone20;
     float ptcone30;
     float ptcone40;
@@ -39,11 +34,8 @@ namespace xAH {
     float topoetcone40;
     
     // quality
-    int   isVeryLoose;
-    int   isLoose;
-    int   isMedium;
-    int   isTight;
-    
+    std::map< std::string, int > quality;
+
     // scale factors w/ sys
     // per object
     std::map< std::string, std::vector< float > > RecoEff_SF;
@@ -98,6 +90,19 @@ namespace xAH {
       return muonELoss;
     }
 
+    // prompt lepton
+    float PromptLeptonInput_DL1mu;
+    float PromptLeptonInput_DRlj;
+    float PromptLeptonInput_LepJetPtFrac;
+    float PromptLeptonInput_PtFrac;
+    float PromptLeptonInput_PtRel;
+    int   PromptLeptonInput_TrackJetNTrack;
+    float PromptLeptonInput_ip2;
+    float PromptLeptonInput_ip3;
+    float PromptLeptonInput_rnnip;
+    int   PromptLeptonInput_sv1_jf_ntrkv;
+    float PromptLeptonIso;
+    float PromptLeptonVeto;
 
   };
 

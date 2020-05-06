@@ -11,7 +11,7 @@
 
 // external tools include(s):
 #include "AsgTools/AnaToolHandle.h"
-#include "PhotonEfficiencyCorrection/IAsgPhotonEfficiencyCorrectionTool.h"
+#include "EgammaAnalysisInterfaces/IAsgPhotonEfficiencyCorrectionTool.h"
 #include "IsolationCorrections/IIsolationCorrectionTool.h"
 
 class AsgPhotonIsEMSelector;
@@ -37,17 +37,12 @@ public:
   // Calibration information
   // Tool recommends using map, rather than setting individual calib paths.
   // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/PhotonEfficiencyRun2#Recommendations_for_full_2015_an
-  std::string m_photonCalibMap = "PhotonEfficiencyCorrection/2015_2016/rel20.7/Moriond2017_v1/map0.txt";
-
-  // recommended files here: https://twiki.cern.ch/twiki/bin/view/AtlasProtected/PhotonEfficiencyRun2#Recommended_input_files
-  std::string m_conEffCalibPath = "PhotonEfficiencyCorrection/efficiencySF.offline.Tight.2016.13TeV.rel20.7.25ns.con.v00.root";
-  std::string m_uncEffCalibPath = "PhotonEfficiencyCorrection/efficiencySF.offline.Tight.2016.13TeV.rel20.7.25ns.unc.v00.root";
-  std::string m_conEffAFIICalibPath = "PhotonEfficiencyCorrection/efficiencySF.offline.Tight.2015.13TeV.rel20.AFII.con.v01.root";
-  std::string m_uncEffAFIICalibPath = "PhotonEfficiencyCorrection/efficiencySF.offline.Tight.2015.13TeV.rel20.AFII.unc.v01.root";
+  // recommendation is set by tool
+  std::string m_overridePhotonCalibMap = "";
 
   // ID information
   // recommended files here: ElectronLikelihoodLooseOfflineConfig2016_Smooth.conf
-  std::string m_tightIDConfigPath = "ElectronPhotonSelectorTools/offline/mc15_20150712/PhotonIsEMTightSelectorCutDefs.conf";
+  std::string m_tightIDConfigPath = "ElectronPhotonSelectorTools/offline/20180825/PhotonIsEMTightSelectorCutDefs.conf";
   std::string m_mediumIDConfigPath = "ElectronPhotonSelectorTools/offline/mc15_20150712/PhotonIsEMMediumSelectorCutDefs.conf";
   std::string m_looseIDConfigPath = "ElectronPhotonSelectorTools/offline/mc15_20150712/PhotonIsEMLooseSelectorCutDefs.conf";
 
@@ -60,17 +55,18 @@ public:
   /// @brief this is the name of the vector of names of the systematically varied containers produced by THIS algo ( these will be the m_inputAlgoSystNames of the algo downstream
   std::string m_outputAlgoSystNames = "PhotonCalibrator_Syst";
 
-  bool        m_useAFII = false;
+  bool        m_useAFII = false; //For backwards compatibility
   float       m_systVal = 0.0;
   std::string m_systName = "";
 
-  std::string m_esModel = "es2016data_mc15c";
+  std::string m_esModel = "es2017_R21_v1";
   std::string m_decorrelationModel = "";
   int m_randomRunNumber = -1;
 
-private:
-  bool    m_isMC = false; //!
+  /** @brief To read PID decision from DAOD, rather than recalculate with tool */
+  bool           m_readIDFlagsFromDerivation = false;
 
+private:
   std::string m_outAuxContainerName;
   std::string m_outSCContainerName;
   std::string m_outSCAuxContainerName;
@@ -81,14 +77,16 @@ private:
 
   // tools
   CP::EgammaCalibrationAndSmearingTool* m_EgammaCalibrationAndSmearingTool = nullptr; //!
-  asg::AnaToolHandle<CP::IIsolationCorrectionTool> m_isolationCorrectionTool_handle{"CP::IsolationCorrectionTool"}; //!
+  asg::AnaToolHandle<CP::IIsolationCorrectionTool> m_isolationCorrectionTool_handle  {"CP::IsolationCorrectionTool/IsolationCorrectionTool", this}; //!
+
   ElectronPhotonShowerShapeFudgeTool*   m_photonFudgeMCTool = nullptr; //!
   AsgPhotonIsEMSelector*                m_photonTightIsEMSelector = nullptr; //!
   AsgPhotonIsEMSelector*                m_photonMediumIsEMSelector = nullptr; //!
   AsgPhotonIsEMSelector*                m_photonLooseIsEMSelector = nullptr; //!
-  asg::AnaToolHandle<IAsgPhotonEfficiencyCorrectionTool> m_photonTightEffTool_handle{"AsgPhotonEfficiencyCorrectionTool/tight"}; //!
-  asg::AnaToolHandle<IAsgPhotonEfficiencyCorrectionTool> m_photonMediumEffTool_handle{"AsgPhotonEfficiencyCorrectionTool/medium"}; //!
-  asg::AnaToolHandle<IAsgPhotonEfficiencyCorrectionTool> m_photonLooseEffTool_handle{"AsgPhotonEfficiencyCorrectionTool/loose"}; //!
+
+  asg::AnaToolHandle<IAsgPhotonEfficiencyCorrectionTool> m_photonTightEffTool_handle {"AsgPhotonEfficiencyCorrectionTool/tight"            , this}; //!
+  asg::AnaToolHandle<IAsgPhotonEfficiencyCorrectionTool> m_photonMediumEffTool_handle{"AsgPhotonEfficiencyCorrectionTool/medium"           , this}; //!
+  asg::AnaToolHandle<IAsgPhotonEfficiencyCorrectionTool> m_photonLooseEffTool_handle {"AsgPhotonEfficiencyCorrectionTool/loose"            , this}; //!
 
 public:
   // Tree *myTree; //!

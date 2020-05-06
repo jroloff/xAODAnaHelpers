@@ -7,17 +7,14 @@
 #include <vector>
 #include <string>
 
-#include "xAODJet/JetContainer.h"
+#include <xAODJet/JetContainer.h>
 
 #include <xAODAnaHelpers/HelperClasses.h>
 #include <xAODAnaHelpers/HelperFunctions.h>
-#include "JetSubStructureUtils/BosonTag.h"
 
 #include <xAODAnaHelpers/FatJet.h>
 #include <xAODAnaHelpers/ParticleContainer.h>
 #include <xAODAnaHelpers/JetContainer.h>
-
-#include "InDetTrackSelectionTool/InDetTrackSelectionTool.h"
 
 
 namespace xAH {
@@ -25,33 +22,28 @@ namespace xAH {
     class FatJetContainer : public ParticleContainer<FatJet,HelperClasses::JetInfoSwitch>
     {
     public:
-      FatJetContainer(const std::string& name = "fatjet", const std::string& detailStr="", const std::string& suffix="",
+      FatJetContainer(const std::string& name = "fatjet", const std::string& detailStr="", const std::string& subjetDetailStr="kinematic", const std::string& suffix="",
 		      float units = 1e3, bool mc = false);
       virtual ~FatJetContainer();
-    
+
       virtual void setTree    (TTree *tree);
       virtual void setBranches(TTree *tree);
       virtual void clear();
-      virtual void FillFatJet( const xAOD::Jet* jet );
-      virtual void FillFatJet( const xAOD::IParticle* particle );
+      virtual void FillFatJet( const xAOD::Jet* jet           , int pvLocation );
+      virtual void FillFatJet( const xAOD::IParticle* particle, int pvLocation );
       using ParticleContainer::setTree; // make other overloaded version of execute() to show up in subclass
 
-      float       m_trackJetPtCut;
-      float       m_trackJetEtaCut;
-      std::string m_trackJetName;
+      float       m_trackJetPtCut  =10e3; // slimming pT cut on associated track jets
+      float       m_trackJetEtaCut =2.5;  // slimmint eta cut on associated track jets
 
     protected:
 
       virtual void updateParticle(uint idx, FatJet& jet);
 
     private:
-      
-      JetSubStructureUtils::BosonTag*      m_WbosonTaggerMedium;
-      JetSubStructureUtils::BosonTag*      m_ZbosonTaggerMedium;
-      JetSubStructureUtils::BosonTag*      m_WbosonTaggerTight ;
-      JetSubStructureUtils::BosonTag*      m_ZbosonTaggerTight ;
 
       bool SelectTrackJet(const xAOD::Jet* TrackJet);
+      float GetEMFrac(const xAOD::Jet& jet);
 
     private:
 
@@ -97,6 +89,9 @@ namespace xAH {
       std::vector<float> *m_NTrimSubjets;
       std::vector<int>   *m_NClusters;
       std::vector<int>   *m_nTracks;
+      std::vector<int>   *m_ungrtrk500;
+      std::vector<float> *m_EMFrac;
+      std::vector<int>   *m_nChargedParticles;
 
       // constituent
       std::vector< int > *m_numConstituents;
@@ -108,23 +103,28 @@ namespace xAH {
       std::vector< std::vector<float> >  *m_constituent_phi;
       std::vector< std::vector<float> >  *m_constituent_e;
 
+      // truth
+      std::vector<float> *m_truth_m;
+      std::vector<float> *m_truth_pt;
+      std::vector<float> *m_truth_phi;
+      std::vector<float> *m_truth_eta;
+      
       // bosonCount
       std::vector< int > *m_nTQuarks;
-      std::vector< int > *m_nHBosons;      
-      std::vector< int > *m_nWBosons;            
-      std::vector< int > *m_nZBosons;      
+      std::vector< int > *m_nHBosons;
+      std::vector< int > *m_nWBosons;
+      std::vector< int > *m_nZBosons;
 
-      // VTag
-      std::vector< int > *m_Wtag_medium;
-      std::vector< int > *m_Ztag_medium;
+      // Assocated Track Jets
+      std::unordered_map<std::string, xAH::JetContainer*> m_trkJets;
+      std::unordered_map<std::string, std::vector<std::vector<unsigned int>>* > m_trkJetsIdx;
 
-      std::vector< int > *m_Wtag_tight;
-      std::vector< int > *m_Ztag_tight;
+      // muonCorrection
+      std::vector<float> *m_muonCorrected_pt;
+      std::vector<float> *m_muonCorrected_eta;
+      std::vector<float> *m_muonCorrected_phi;
+      std::vector<float> *m_muonCorrected_m;
 
-      // Assocated Track Jets 
-      std::vector< std::vector<unsigned int> >* m_trkJetsIdx;
-      xAH::JetContainer*  m_trkJets;
-      
     };
 }
 

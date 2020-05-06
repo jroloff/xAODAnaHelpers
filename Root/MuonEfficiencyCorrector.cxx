@@ -114,11 +114,6 @@ EL::StatusCode MuonEfficiencyCorrector :: initialize ()
     return EL::StatusCode::FAILURE;
   }
 
-
-  const xAOD::EventInfo* eventInfo(nullptr);
-  ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
-  m_isMC = ( eventInfo->eventType( xAOD::EventInfo::IS_SIMULATION ) );
-
   m_numEvent      = 0;
   m_numObject     = 0;
 
@@ -127,8 +122,8 @@ EL::StatusCode MuonEfficiencyCorrector :: initialize ()
 
   // Create a ToolHandle of the PRW tool which is passed to the MuonEfficiencyScaleFactors class later
   //
-  if( m_isMC ){
-    if(!setToolName(m_pileup_tool_handle, "Pileup")){
+  if( isMC() ){
+    if(!m_pileup_tool_handle.isUserConfigured()){
       ANA_MSG_FATAL("A configured " << m_pileup_tool_handle.typeAndName() << " must have been previously created! Are you creating one in xAH::BasicEventSelection?" );
       return EL::StatusCode::FAILURE;
     }
@@ -150,7 +145,10 @@ EL::StatusCode MuonEfficiencyCorrector :: initialize ()
   } else {
     m_muRecoSF_tool = new CP::MuonEfficiencyScaleFactors( m_recoEffSF_tool_name );
     ANA_CHECK( m_muRecoSF_tool->setProperty("WorkingPoint", m_WorkingPointReco ));
-    ANA_CHECK( m_muRecoSF_tool->setProperty("CalibrationRelease", m_calibRelease ));
+    if ( !m_overrideCalibRelease.empty() ) {
+      ANA_MSG_WARNING("Overriding muon efficiency calibration release to " << m_overrideCalibRelease);
+      ANA_CHECK( m_muRecoSF_tool->setProperty("CalibrationRelease", m_overrideCalibRelease ));
+    }
     ANA_CHECK( m_muRecoSF_tool->initialize());
 
     //  Add the chosen WP to the string labelling the vector<SF> decoration
@@ -191,7 +189,10 @@ EL::StatusCode MuonEfficiencyCorrector :: initialize ()
   } else {
     m_muIsoSF_tool = new CP::MuonEfficiencyScaleFactors( m_isoEffSF_tool_name );
     ANA_CHECK( m_muIsoSF_tool->setProperty("WorkingPoint", iso_WP ));
-    ANA_CHECK( m_muIsoSF_tool->setProperty("CalibrationRelease", m_calibRelease ));
+    if ( !m_overrideCalibRelease.empty() ) {
+      ANA_MSG_WARNING("Overriding muon efficiency calibration release to " << m_overrideCalibRelease);
+      ANA_CHECK( m_muIsoSF_tool->setProperty("CalibrationRelease", m_overrideCalibRelease ));
+    }
     ANA_CHECK( m_muIsoSF_tool->initialize());
 
     //  Add the chosen WP to the string labelling the vector<SF> decoration
@@ -219,94 +220,46 @@ EL::StatusCode MuonEfficiencyCorrector :: initialize ()
 
   // 3.
   // Initialise the CP::MuonTriggerScaleFactors tool
-  // several years can be configured
   //
 
-  //std::vector<std::string> m_YearsList;
-  std::string tmp_years = m_Years;
+  m_trigEffSF_tool_name = "MuonTriggerScaleFactors_effSF_Trig_Reco" + m_WorkingPointReco;
 
-  // Parse all comma seperated years
-  //
-  while ( tmp_years.size() > 0) {
-    size_t pos = tmp_years.find_first_of(',');
-    if ( pos == std::string::npos ) {
-      pos = tmp_years.size();
-      m_YearsList.push_back(tmp_years.substr(0, pos));
-      tmp_years.erase(0, pos);
-    } else {
-      m_YearsList.push_back(tmp_years.substr(0, pos));
-      tmp_years.erase(0, pos+1);
-    }
-  }
+  ANA_MSG_INFO( " Initialising CP::MuonTriggerScaleFactors for TRIGGER efficiency SF..." );
 
-  // If no random run number is used the list should contain only one element
-  if ( m_isMC && !m_useRandomRunNumber ) {
-    ANA_MSG_WARNING("m_useRandomRunNumber is set to false! This is not recommended!!!" );
-    if ( m_YearsList.size() > 1 ) {
-      ANA_MSG_ERROR("In this case the list of years should contain only one element");
-      return EL::StatusCode::FAILURE;
-    }
-  }
+  ANA_CHECK( checkToolStore<CP::MuonTriggerScaleFactors>(m_trigEffSF_tool_name));
+  if ( asg::ToolStore::contains<CP::MuonTriggerScaleFactors>( m_trigEffSF_tool_name ) ) {
+    m_muTrigSF_tool = asg::ToolStore::get<CP::MuonTriggerScaleFactors>( m_trigEffSF_tool_name );
+  } else {
+    m_muTrigSF_tool = new CP::MuonTriggerScaleFactors( m_trigEffSF_tool_name );
 
-
-  // Initialize vector of names
-  //
-  for(auto yr : m_YearsList) {
-    m_trigEffSF_tool_names[yr] = "MuonTriggerScaleFactors_" + yr + "_effSF_Trig_Reco" + m_WorkingPointRecoTrig + "_Iso" + m_WorkingPointIsoTrig;
-  }
-
-  // Loop over all years and initialize corresponding tools
-  //
-  for(auto yr : m_YearsList) {
-
-    std::string iso_trig_WP = "Iso" + m_WorkingPointIsoTrig;
-
-    ANA_MSG_INFO( " Initialising CP::MuonTriggerScaleFactors for TRIGGER efficiency SF..." );
-
-    ANA_CHECK( checkToolStore<CP::MuonTriggerScaleFactors>(m_trigEffSF_tool_names[yr]));
-    if ( asg::ToolStore::contains<CP::MuonTriggerScaleFactors>( m_trigEffSF_tool_names[yr] ) ) {
-      m_muTrigSF_tools[yr] = asg::ToolStore::get<CP::MuonTriggerScaleFactors>( m_trigEffSF_tool_names[yr] );
-    } else {
-      m_muTrigSF_tools[yr] = new CP::MuonTriggerScaleFactors( m_trigEffSF_tool_names[yr] );
-
-      if ( m_AllowZeroSF ) {
-    	ANA_MSG_WARNING( "m_AllowZeroSF is set to True. No errors will arise for runs missing required triggers!!!");
-        ANA_CHECK( m_muTrigSF_tools[yr]->setProperty("AllowZeroSF", m_AllowZeroSF ));
-      }
-
-      ANA_CHECK( m_muTrigSF_tools[yr]->setProperty("Isolation", iso_trig_WP ));
-      ANA_CHECK( m_muTrigSF_tools[yr]->setProperty("MuonQuality", m_WorkingPointRecoTrig ));
-      if ( !yr.empty() ) {
-        ANA_CHECK( m_muTrigSF_tools[yr]->setProperty("Year", yr ));
-      }
-      if ( !m_MCCampaign.empty() ) {
-      ANA_CHECK( m_muTrigSF_tools[yr]->setProperty("MC", m_MCCampaign ));
-
-      }
-      ANA_CHECK( m_muTrigSF_tools[yr]->initialize());
-
+    if ( m_AllowZeroSF ) {
+      ANA_MSG_WARNING( "m_AllowZeroSF is set to True. No errors will arise for runs missing required triggers!!!");
+      ANA_CHECK( m_muTrigSF_tool->setProperty("AllowZeroSF", m_AllowZeroSF ));
     }
 
+    ANA_CHECK( m_muTrigSF_tool->setProperty("MuonQuality", m_WorkingPointReco ));
+    ANA_CHECK( m_muTrigSF_tool->initialize());
   }
 
   std::string token;
   std::istringstream ss(m_MuTrigLegs);
   while ( std::getline(ss, token, ',') ) {
-    m_SingleMuTriggers.push_back(token);
+    size_t pos = token.find(":");
+    m_SingleMuTriggerMap[token.substr(0,pos)] = token.substr(pos+1);
   }
 
   // Remember base output syst. names container
   m_outputSystNamesTrigBase = m_outputSystNamesTrig;
   // Add the chosen WP to the string labelling the output syst. names container
-  m_outputSystNamesTrig = m_outputSystNamesTrig + "_Reco" + m_WorkingPointRecoTrig + "_Iso" + m_WorkingPointIsoTrig;
+  m_outputSystNamesTrig = m_outputSystNamesTrig + "_Reco" + m_WorkingPointReco;
 
-  CP::SystematicSet affectSystsTrig = m_muTrigSF_tools[m_YearsList[0]]->affectingSystematics();
+  CP::SystematicSet affectSystsTrig = m_muTrigSF_tool->affectingSystematics();
   for ( const auto& syst_it : affectSystsTrig ) { ANA_MSG_DEBUG("MuonEfficiencyScaleFactors tool can be affected by trigger efficiency systematic: " << syst_it.name()); }
   //
   // Make a list of systematics to be used, based on configuration input
   // Use HelperFunctions::getListofSystematics() for this!
   //
-  const CP::SystematicSet recSystsTrig = m_muTrigSF_tools[m_YearsList[0]]->recommendedSystematics();
+  const CP::SystematicSet recSystsTrig = m_muTrigSF_tool->recommendedSystematics();
   m_systListTrig = HelperFunctions::getListofSystematics( recSystsTrig, m_systNameTrig, m_systValTrig, msg() );
 
   ANA_MSG_INFO("Will be using MuonEfficiencyScaleFactors tool trigger efficiency systematic:");
@@ -333,7 +286,10 @@ EL::StatusCode MuonEfficiencyCorrector :: initialize ()
   } else {
     m_muTTVASF_tool = new CP::MuonEfficiencyScaleFactors( m_TTVAEffSF_tool_name );
     ANA_CHECK( m_muTTVASF_tool->setProperty("WorkingPoint", m_WorkingPointTTVA ));
-    ANA_CHECK( m_muTTVASF_tool->setProperty("CalibrationRelease", m_calibRelease ));
+    if ( !m_overrideCalibRelease.empty() ) {
+      ANA_MSG_WARNING("Overriding muon efficiency calibration release to " << m_overrideCalibRelease);
+      ANA_CHECK( m_muTTVASF_tool->setProperty("CalibrationRelease", m_overrideCalibRelease ));
+    }
     ANA_CHECK( m_muTTVASF_tool->initialize());
 
     //  Add the chosen WP to the string labelling the vector<SF> decoration
@@ -385,7 +341,7 @@ EL::StatusCode MuonEfficiencyCorrector :: execute ()
 
   m_numEvent++;
 
-  if ( !m_isMC ) {
+  if ( !isMC() ) {
     if ( m_numEvent == 1 ) { ANA_MSG_INFO( "Sample is Data! Do not apply any Muon Efficiency correction... "); }
     return EL::StatusCode::SUCCESS;
   }
@@ -427,7 +383,7 @@ EL::StatusCode MuonEfficiencyCorrector :: execute ()
       }
 
       // decorate muons w/ SF - there will be a decoration w/ different name for each syst!
-      this->executeSF( eventInfo, inputMuons, systName.empty(), writeSystNames );
+      ANA_CHECK( this->executeSF( eventInfo, inputMuons, systName.empty(), writeSystNames ) );
 
       writeSystNames = false;
 
@@ -470,6 +426,11 @@ EL::StatusCode MuonEfficiencyCorrector :: finalize ()
   // gets called on worker nodes that processed input events.
 
   ANA_MSG_INFO( "Deleting tool instances...");
+
+  delete m_muRecoSF_tool;
+  delete m_muIsoSF_tool;
+  delete m_muTrigSF_tool;
+  delete m_muTTVASF_tool;
 
   return EL::StatusCode::SUCCESS;
 }
@@ -520,7 +481,7 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
   //
   if ( !isToolAlreadyUsed(m_recoEffSF_tool_name) ) {
 
-    if ( writeSystNames ) sysVariationNamesReco = std::unique_ptr<std::vector<std::string>>(new std::vector<std::string>);
+    if ( writeSystNames ) sysVariationNamesReco = std::make_unique< std::vector< std::string > >();
 
     for ( const auto& syst_it : m_systListReco ) {
       if ( !syst_it.name().empty() && !nominal ) continue;
@@ -567,10 +528,15 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
   	   sfVecReco( *mu_itr ) = std::vector<float>();
     	 }
 
-    	 float recoEffSF(1.0);
+    	 float recoEffSF(-1.0);
     	 if ( m_muRecoSF_tool->getEfficiencyScaleFactor( *mu_itr, recoEffSF ) != CP::CorrectionCode::Ok ) {
-    	   ANA_MSG_WARNING( "Problem in getEfficiencyScaleFactor");
-    	   recoEffSF = 1.0;
+         if ( m_AllowZeroSF ) {
+  	       ANA_MSG_WARNING( "Problem in Reco getEfficiencyScaleFactor");
+           recoEffSF = -1.0;
+         } else {
+           ANA_MSG_ERROR( "Could not get Reco efficiency scale factors");
+           return EL::StatusCode::FAILURE;
+         }
     	 }
     	 //
     	 // Add it to decoration vector
@@ -620,7 +586,7 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
   //
   if ( !isToolAlreadyUsed(m_isoEffSF_tool_name) ) {
 
-    if ( writeSystNames ) sysVariationNamesIso = std::unique_ptr<std::vector<std::string>>(new std::vector<std::string>);
+    if ( writeSystNames ) sysVariationNamesIso = std::make_unique< std::vector< std::string > >();
 
     for ( const auto& syst_it : m_systListIso ) {
       if ( !syst_it.name().empty() && !nominal ) continue;
@@ -666,10 +632,15 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
   	   sfVecIso( *mu_itr ) = std::vector<float>();
     	 }
 
-    	 float IsoEffSF(1.0);
+    	 float IsoEffSF(-1.0);
     	 if ( m_muIsoSF_tool->getEfficiencyScaleFactor( *mu_itr, IsoEffSF ) != CP::CorrectionCode::Ok ) {
-    	   ANA_MSG_WARNING( "Problem in getEfficiencyScaleFactor");
-  	   IsoEffSF = 1.0;
+         if ( m_AllowZeroSF ) {
+  	       ANA_MSG_WARNING( "Problem in Iso getEfficiencyScaleFactor");
+           IsoEffSF = -1.0;
+         } else {
+           ANA_MSG_ERROR( "Could not get Iso efficiency scale factors");
+           return EL::StatusCode::FAILURE;
+         }
     	 }
     	 //
     	 // Add it to decoration vector
@@ -712,95 +683,22 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
 
   // Do it only if a tool with *this* name hasn't already been used
   //
+  if ( !isToolAlreadyUsed(m_trigEffSF_tool_name) ) {
 
-  std::string randYear = "2016";
-
-  if ( m_isMC && m_useRandomRunNumber ) {
-
-    // Unless specifically switched off by the user,
-    // use the per-event random runNumber weighted by integrated luminosity got from CP::PileupReweightingTool::getRandomRunNumber()
-    // Source:
-    // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/ExtendedPileupReweighting#Generating_PRW_config_files
-    // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/MCPAnalysisGuidelinesMC15#Muon_trigger_efficiency_scale_fa
-    //
-    // Use mu-dependent randomization (recommended)
-    //
-    //
-    // TEMP! Commenting this out b/c stupid AnaToolHandle does not work as it should...
-    //
-    //int randRunNumber = m_pileup_tool->getRandomRunNumber( *eventInfo, true );
-
-    int randRunNumber = m_pileup_tool_handle->getRandomRunNumber( *eventInfo, true );
-    //int randRunNumber = asg::ToolStore::get<CP::PileupReweightingTool>("Pileup")->getRandomRunNumber( *eventInfo, true );
-    int runNumber = randRunNumber;
-
-
-    if (runNumber >= 266904 && runNumber <= 284484 ) {
-
-      randYear = "2015";
-      if( ! (std::find(m_YearsList.begin(), m_YearsList.end(), randYear) != m_YearsList.end()) ) {
-        ANA_MSG_ERROR( "Random runNumber is 2015 but no corresponding MuonTriggerEfficiency tool has been initialized. Check ilumicalc config or extend m_Years!");
-        return EL::StatusCode::FAILURE;
-      }
-
-    } else if (runNumber >= 296939 ) {
-
-      randYear = "2016";
-      if( ! (std::find(m_YearsList.begin(), m_YearsList.end(), randYear) != m_YearsList.end()) ) {
-       ANA_MSG_ERROR( "Random runNumber is 2016 but no corresponding MuonTriggerEfficiency tool has been initialized. Check ilumicalc config or extend m_Years!");
-       return EL::StatusCode::FAILURE;
-      }
-
-    } else {
-
-      ANA_MSG_DEBUG( "Random runNumber generated outside hardcoded run number ranges");
-      ANA_MSG_DEBUG( "Setting the year as randomly chosen in the years list");
-      std::srand ( unsigned ( std::time(0) ) );
-      std::vector<std::string> randomYearsList = m_YearsList;
-      std::random_shuffle ( randomYearsList.begin(), randomYearsList.end() );
-      randYear = randomYearsList[0];
-
+    static const SG::AuxElement::ConstAccessor<unsigned int> acc_rnd("RandomRunNumber");
+    unsigned int run=0;
+    if (acc_rnd.isAvailable(*eventInfo)){
+      run = acc_rnd(*eventInfo);
     }
 
-    if ( runNumber == 0 && randYear == "2016") {
-      runNumber = m_runNumber2016;
-      ANA_MSG_DEBUG("runNumber is 0. Setting the tool to randYear 2016");
-    }
-    if ( runNumber == 0 && randYear == "2015") {
-      runNumber = m_runNumber2015;
-      ANA_MSG_DEBUG("runNumber is 0. Setting the tool to randYear 2015");
-    }
+    for (auto const& trig : m_SingleMuTriggerMap) {
 
-
-    if( m_muTrigSF_tools[randYear]->setRunNumber( runNumber ) == CP::CorrectionCode::Error ) {
-      ANA_MSG_ERROR( "Failed to set RunNumber for MuonTriggerScaleFactors tool");
-      return EL::StatusCode::FAILURE;
-    }
-
-  }
-
-  if ( m_isMC && !m_useRandomRunNumber ) {
-
-    int rn = 0;
-    if ( m_YearsList[0] == "2015" ) { rn = m_runNumber2015; }
-    else if ( m_YearsList[0] == "2016" ) { rn = m_runNumber2016; }
-    else {
-      ANA_MSG_ERROR( "Unrecognized first element in list of years");
-      return EL::StatusCode::FAILURE;
-    }
-    if ( m_muTrigSF_tools[m_YearsList[0]]->setRunNumber( rn ) == CP::CorrectionCode::Error ) {
-      ANA_MSG_ERROR("Cannot set RunNumber for MuonTriggerScaleFactors tool");
-      return EL::StatusCode::FAILURE;
-    }
-    randYear = m_YearsList[0];
-  }
-
-  if ( !isToolAlreadyUsed(m_trigEffSF_tool_names[randYear]) ) {
-
-    for ( const auto& trig_it : m_SingleMuTriggers ) {
+      auto trig_it = trig.second;
+      if (trig.first.find("2015")!=std::string::npos && run>284484) continue;
+      else if ((trig.first.find("2016")!=std::string::npos || trig.first.find("2017")!=std::string::npos) && run<=284484) continue;
 
       std::unique_ptr< std::vector< std::string > > sysVariationNamesTrig = nullptr;
-      if ( writeSystNames ) sysVariationNamesTrig = std::unique_ptr<std::vector<std::string>>(new std::vector<std::string>);
+      if ( writeSystNames ) sysVariationNamesTrig = std::make_unique< std::vector< std::string > >();
       // this is used to put the list of sys strings in the store.
       // The original string needs to be updated with the name of
       // the trigger for every item in the trigger loop.
@@ -820,15 +718,15 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
         if ( !syst_it.name().empty() && !nominal ) continue;
 
         // Create the name of the SF weight to be recorded
-        std::string sfName = "MuTrigEff_SF_syst_" + trig_it + "_Reco" + m_WorkingPointRecoTrig + "_Iso" + m_WorkingPointIsoTrig;
-        std::string effName = "MuTrigMCEff_syst_" + trig_it + "_Reco" + m_WorkingPointRecoTrig + "_Iso" + m_WorkingPointIsoTrig;
+        std::string sfName = "MuTrigEff_SF_syst_" + trig_it + "_Reco" + m_WorkingPointReco;
+        std::string effName = "MuTrigMCEff_syst_" + trig_it + "_Reco" + m_WorkingPointReco;
 
         ANA_MSG_DEBUG( "Trigger efficiency SF sys name (to be recorded in xAOD::TStore) is: " << syst_it.name() );
         if ( writeSystNames ) sysVariationNamesTrig->push_back(syst_it.name());
 
         // apply syst
         //
-        if ( m_muTrigSF_tools[randYear]->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
+        if ( m_muTrigSF_tool->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
           ANA_MSG_ERROR( "Failed to configure MuonTriggerScaleFactors for trigger " << trig_it << " systematic " << syst_it.name());
           return EL::StatusCode::FAILURE;
         }
@@ -863,10 +761,15 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
            //
            std::string full_scan_chain = "HLT_mu8noL1";
 
-           double triggerMCEff(0.0); // tool wants a double
-           if ( m_muTrigSF_tools[randYear]->getTriggerEfficiency( *mu_itr, triggerMCEff, trig_it, !m_isMC ) != CP::CorrectionCode::Ok ) {
-             ANA_MSG_WARNING( "Problem in getTriggerEfficiency - single muon trigger(s)");
-             triggerMCEff = 0.0;
+           double triggerMCEff(-1.0); // tool wants a double
+           if ( m_muTrigSF_tool->getTriggerEfficiency( *mu_itr, triggerMCEff, trig_it, !isMC() ) != CP::CorrectionCode::Ok ) {
+             if ( m_AllowZeroSF ) {
+               ANA_MSG_WARNING( "Problem in getTriggerEfficiency - trigger: " << trig_it);
+               triggerMCEff = -1.0;
+             } else {
+               ANA_MSG_ERROR( "Could not get trigger efficiency - trigger: " << trig_it);
+               return EL::StatusCode::FAILURE;
+             }
            }
            // Add it to decoration vector
            //
@@ -874,19 +777,29 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
 
            // retrieve MC efficiency for full scan chain
            //
-           double triggerDataEff(0.0); // tool wants a double
+           double triggerDataEff(-1.0); // tool wants a double
            if ( trig_it == full_scan_chain ) {
-             if ( m_muTrigSF_tools[randYear]->getTriggerEfficiency( *mu_itr, triggerDataEff, trig_it, m_isMC ) != CP::CorrectionCode::Ok ) {
-               ANA_MSG_WARNING( "Problem in getTriggerEfficiency - single muon trigger(s)");
-               triggerDataEff = 0.0;
+             if ( m_muTrigSF_tool->getTriggerEfficiency( *mu_itr, triggerDataEff, trig_it, isMC() ) != CP::CorrectionCode::Ok ) {
+               if ( m_AllowZeroSF ) {
+                 ANA_MSG_WARNING( "Problem in getTriggerEfficiency - trigger: " << trig_it);
+                 triggerDataEff = -1.0;
+               } else {
+                 ANA_MSG_ERROR( "Could not get trigger efficiency - trigger: " << trig_it);
+                 return EL::StatusCode::FAILURE;
+               }
              }
            }
 
            double triggerEffSF(1.0); // tool wants a double
            if ( trig_it != full_scan_chain ) {
-             if ( m_muTrigSF_tools[randYear]->getTriggerScaleFactor( *mySingleMuonCont.asDataVector(), triggerEffSF, trig_it ) != CP::CorrectionCode::Ok ) {
-               ANA_MSG_WARNING( "Problem in getTriggerScaleFactor - single muon trigger(s)");
-               triggerEffSF = 1.0;
+             if ( m_muTrigSF_tool->getTriggerScaleFactor( *mySingleMuonCont.asDataVector(), triggerEffSF, trig_it ) != CP::CorrectionCode::Ok ) {
+               if ( m_AllowZeroSF ) {
+                 ANA_MSG_WARNING( "Problem in getTriggerScaleFactor - trigger: " << trig_it);
+                 triggerEffSF = -1.0;
+               } else {
+                 ANA_MSG_ERROR( "Could not get trigger efficiency scale factor - trigger: " << trig_it);
+                 return EL::StatusCode::FAILURE;
+               }
              }
            } else {
              if ( triggerMCEff > 0.0 ) {
@@ -900,7 +813,6 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
 
 
            ANA_MSG_DEBUG( "===>>>");
-           ANA_MSG_DEBUG( "Random year: " << randYear.c_str() );
            ANA_MSG_DEBUG( "Muon " << idx << ", pt = " << mu_itr->pt()*1e-3 << " GeV " );
            ANA_MSG_DEBUG( "Trigger efficiency SF decoration: " << sfName );
            ANA_MSG_DEBUG( "Trigger MC efficiency decoration: " << effName );
@@ -938,7 +850,7 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
   //
   if ( !isToolAlreadyUsed(m_TTVAEffSF_tool_name) ) {
 
-    if ( writeSystNames ) sysVariationNamesTTVA = std::unique_ptr<std::vector<std::string>>(new std::vector<std::string>);
+    if ( writeSystNames ) sysVariationNamesTTVA = std::make_unique< std::vector< std::string > >();
 
     for ( const auto& syst_it : m_systListTTVA ) {
       if ( !syst_it.name().empty() && !nominal ) continue;
@@ -988,10 +900,15 @@ EL::StatusCode MuonEfficiencyCorrector :: executeSF ( const xAOD::EventInfo* eve
   	   sfVecTTVA( *mu_itr ) = std::vector<float>();
     	 }
 
-    	 float TTVAEffSF(1.0);
+    	 float TTVAEffSF(-1.0);
     	 if ( m_muTTVASF_tool->getEfficiencyScaleFactor( *mu_itr, TTVAEffSF ) != CP::CorrectionCode::Ok ) {
-    	   ANA_MSG_WARNING( "Problem in getEfficiencyScaleFactor");
-  	   TTVAEffSF = 1.0;
+         if ( m_AllowZeroSF ) {
+  	       ANA_MSG_WARNING( "Problem in TTVA getEfficiencyScaleFactor");
+           TTVAEffSF = -1.0;
+         } else {
+           ANA_MSG_ERROR( "Could not get TTVA efficiency scale factors");
+           return EL::StatusCode::FAILURE;
+         }
     	 }
     	 //
     	 // Add it to decoration vector

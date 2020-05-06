@@ -31,14 +31,14 @@ HelpTreeBase::HelpTreeBase(xAOD::TEvent* event, TTree* tree, TFile* file, const 
   m_trigInfoSwitch(nullptr),
   m_trigConfTool(nullptr),
   m_trigDecTool(nullptr),
-  m_eventInfo(nullptr),
-  m_met(nullptr)
+  m_eventInfo(nullptr)
 {
 
   m_units = units;
   m_debug = debug;
   m_tree = tree;
   m_tree->SetDirectory( file );
+  m_nominalTree = strcmp(m_tree->GetName(), "nominal") == 0;
   m_event = event;
   m_store = store;
   Info("HelpTreeBase()", "HelpTreeBase setup");
@@ -72,6 +72,10 @@ HelpTreeBase::~HelpTreeBase() {
     for (auto photon: m_photons)
       delete photon.second;
 
+    //cl
+    for (auto cluster: m_clusters)
+      delete cluster.second;
+
     //fatjet
     for (auto fatjet: m_fatjets)
       delete fatjet.second;
@@ -81,7 +85,8 @@ HelpTreeBase::~HelpTreeBase() {
       delete tau.second;
 
     //met
-    delete m_met;
+    for (auto met: m_met)
+      delete met.second;
 
     //jet
     for (auto jet: m_jets)
@@ -119,20 +124,25 @@ void HelpTreeBase::Fill() {
  *
  ********************/
 
-void HelpTreeBase::AddEvent( const std::string detailStr ) {
+void HelpTreeBase::AddEvent( const std::string& detailStr ) {
 
   if(m_debug)  Info("AddEvent()", "Adding event variables: %s", detailStr.c_str());
 
-  m_eventInfo       = new xAH::EventInfo(detailStr, m_units, m_isMC);
+  m_eventInfo       = new xAH::EventInfo(detailStr, m_units, m_isMC, m_nominalTree);
   m_eventInfo -> setBranches(m_tree);
-  this->AddEventUser();
+  this->AddEventUser(detailStr);
 }
 
-void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*event*/ ) {
+void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*event*/, const xAOD::VertexContainer* vertices ) {
 
   this->ClearEvent();
 
-  m_eventInfo->FillEvent(eventInfo, m_event);
+  // only retrieve the vertex container if it's not set and the user asks for that information
+  if( m_eventInfo->m_infoSwitch.m_pileup && !vertices ) {
+    HelperFunctions::retrieve( vertices, m_vertexContainerName, m_event, 0);
+  }
+
+  m_eventInfo->FillEvent(eventInfo, m_event, vertices);
 
   this->FillEventUser(eventInfo);
 }
@@ -142,7 +152,7 @@ void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*
  *   TRIGGER
  *
  ********************/
-void HelpTreeBase::AddTrigger( const std::string detailStr ) {
+void HelpTreeBase::AddTrigger( const std::string& detailStr ) {
 
   if(m_debug) Info("AddTrigger()", "Adding trigger variables: %s", detailStr.c_str());
 
@@ -165,8 +175,16 @@ void HelpTreeBase::AddTrigger( const std::string detailStr ) {
   // Trigger Decision for each and every trigger in a vector
   if ( m_trigInfoSwitch->m_passTriggers ) {
     // vector of strings for trigger names which fired
-    m_tree->Branch("passedTriggers",       &m_passTriggers        );
+    m_tree->Branch("passedTriggers",       &m_passedTriggers      );
+    m_tree->Branch("disabledTriggers",     &m_disabledTriggers    );
+  }
+
+  if ( !m_isMC && m_trigInfoSwitch->m_prescales ) {
     m_tree->Branch("triggerPrescales",     &m_triggerPrescales    );
+  }
+
+  if ( !m_isMC && m_trigInfoSwitch->m_prescalesLumi ) {
+    m_tree->Branch("triggerPrescalesLumi", &m_triggerPrescalesLumi);
   }
 
   if ( m_trigInfoSwitch->m_passTrigBits ) {
@@ -174,7 +192,7 @@ void HelpTreeBase::AddTrigger( const std::string detailStr ) {
     m_tree->Branch("isPassBitsNames",      &m_isPassBitsNames     );
   }
 
-  //this->AddTriggerUser();
+  this->AddTriggerUser( detailStr );
 }
 
 // Fill the information in the trigger branches
@@ -224,11 +242,27 @@ void HelpTreeBase::FillTrigger( const xAOD::EventInfo* eventInfo ) {
   if ( m_trigInfoSwitch->m_passTriggers ) {
 
     if ( m_debug ) { Info("HelpTreeBase::FillTrigger()", "Switch: m_trigInfoSwitch->m_passTriggers"); }
-    static SG::AuxElement::ConstAccessor< std::vector< std::string > > passTrigs("passTriggers");
-    if( passTrigs.isAvailable( *eventInfo ) ) { m_passTriggers = passTrigs( *eventInfo ); }
+    static SG::AuxElement::ConstAccessor< std::vector< std::string > > acc_passedTriggers  ("passedTriggers");
+    if( acc_passedTriggers  .isAvailable( *eventInfo ) ) { m_passedTriggers   = acc_passedTriggers  ( *eventInfo ); }
+    static SG::AuxElement::ConstAccessor< std::vector< std::string > > acc_disabledTriggers("disabledTriggers");
+    if( acc_disabledTriggers.isAvailable( *eventInfo ) ) { m_disabledTriggers = acc_disabledTriggers( *eventInfo ); }
+  }
+
+  if ( !m_isMC && m_trigInfoSwitch->m_prescales ) {
+
+    if ( m_debug ) { Info("HelpTreeBase::FillTrigger()", "Switch: m_trigInfoSwitch->m_prescales"); }
 
     static SG::AuxElement::ConstAccessor< std::vector< float > > trigPrescales("triggerPrescales");
     if( trigPrescales.isAvailable( *eventInfo ) ) { m_triggerPrescales = trigPrescales( *eventInfo ); }
+
+  }
+
+  if ( !m_isMC && m_trigInfoSwitch->m_prescalesLumi ) {
+
+    if ( m_debug ) { Info("HelpTreeBase::FillTrigger()", "Switch: m_trigInfoSwitch->m_prescalesLumi"); }
+
+    static SG::AuxElement::ConstAccessor< std::vector< float > > trigPrescalesLumi("triggerPrescalesLumi");
+    if( trigPrescalesLumi.isAvailable( *eventInfo ) ) { m_triggerPrescalesLumi = trigPrescalesLumi( *eventInfo ); }
 
   }
 
@@ -241,7 +275,8 @@ void HelpTreeBase::FillTrigger( const xAOD::EventInfo* eventInfo ) {
     if( isPassBitsNames.isAvailable( *eventInfo ) ) { m_isPassBitsNames = isPassBitsNames( *eventInfo ); }
 
   }
-
+  
+  this->FillTriggerUser(eventInfo);
 }
 
 // Clear Trigger
@@ -254,8 +289,10 @@ void HelpTreeBase::ClearTrigger() {
   m_L1PSKey   = 0;
   m_HLTPSKey  = 0;
 
-  m_passTriggers.clear();
+  m_passedTriggers.clear();
+  m_disabledTriggers.clear();
   m_triggerPrescales.clear();
+  m_triggerPrescalesLumi.clear();
   m_isPassBits.clear();
   m_isPassBitsNames.clear();
 
@@ -269,7 +306,7 @@ void HelpTreeBase::ClearTrigger() {
 
 /* TODO: jet trigger */
 //CD: is this useful at all?
-void HelpTreeBase::AddJetTrigger( const std::string detailStr )
+void HelpTreeBase::AddJetTrigger( const std::string& detailStr )
 {
   if ( m_debug )  Info("AddJetTrigger()", "Adding jet trigger variables: %s", detailStr.c_str());
 }
@@ -283,11 +320,11 @@ void HelpTreeBase::ClearJetTrigger(  ) { }
  *
  ********************/
 
-void HelpTreeBase::AddMuons(const std::string detailStr, const std::string muonName) {
+void HelpTreeBase::AddMuons(const std::string& detailStr, const std::string& muonName) {
 
   if ( m_debug )  Info("AddMuons()", "Adding muon variables: %s", detailStr.c_str());
 
-  m_muons[muonName] = new xAH::MuonContainer(muonName, detailStr, m_units, m_isMC, strcmp(m_tree->GetName(), "nominal") == 0);
+  m_muons[muonName] = new xAH::MuonContainer(muonName, detailStr, m_units, m_isMC, m_nominalTree);
   xAH::MuonContainer* thisMuon = m_muons[muonName];
   HelperClasses::MuonInfoSwitch& muonInfoSwitch = thisMuon->m_infoSwitch;
 
@@ -298,36 +335,36 @@ void HelpTreeBase::AddMuons(const std::string detailStr, const std::string muonN
      if ( muonInfoSwitch.m_recoEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
        for (auto& reco : muonInfoSwitch.m_recoWPs) {
          std::string recoEffSF_sysNames = "muon_RecoEff_SF_" + reco + "_sysNames";
-         m_tree->Branch( recoEffSF_sysNames.c_str() , & (m_RecoEff_SF_sysNames)[ reco ] );
+         m_tree->Branch( recoEffSF_sysNames.c_str() , & (m_MuonRecoEff_SF_sysNames)[ reco ] );
        }
      }
 
      if ( muonInfoSwitch.m_isoEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
        for (auto& isol : muonInfoSwitch.m_isolWPs) {
          std::string isolEffSF_sysNames = "muon_IsoEff_SF_" + isol + "_sysNames";
-         m_tree->Branch( isolEffSF_sysNames.c_str() , & (m_IsoEff_SF_sysNames)[ isol ] );
+         m_tree->Branch( isolEffSF_sysNames.c_str() , & (m_MuonIsoEff_SF_sysNames)[ isol ] );
        }
      }
 
      if ( muonInfoSwitch.m_trigEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
        for (auto& trig : muonInfoSwitch.m_trigWPs) {
          std::string trigEffSF_sysNames = "muon_TrigEff_SF_" + trig + "_sysNames";
-         m_tree->Branch( trigEffSF_sysNames.c_str() , & (m_TrigEff_SF_sysNames)[ trig ] );
+         m_tree->Branch( trigEffSF_sysNames.c_str() , & (m_MuonTrigEff_SF_sysNames)[ trig ] );
        }
      }
 
      if ( muonInfoSwitch.m_ttvaEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
        std::string ttvaEffSF_sysNames = "muon_TTVAEff_SF_sysNames";
-       m_tree->Branch( ttvaEffSF_sysNames.c_str() , &m_TTVAEff_SF_sysNames );
+       m_tree->Branch( ttvaEffSF_sysNames.c_str() , &m_MuonTTVAEff_SF_sysNames );
      }
 
   }
 
   thisMuon->setBranches(m_tree);
-  this->AddMuonsUser();
+  this->AddMuonsUser(detailStr, muonName);
 }
 
-void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vertex* primaryVertex, const std::string muonName ) {
+void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vertex* primaryVertex, const std::string& muonName ) {
 
   this->ClearMuons(muonName);
   HelperClasses::MuonInfoSwitch& muonInfoSwitch = m_muons[muonName]->m_infoSwitch;
@@ -340,7 +377,7 @@ void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vert
       for ( auto& reco : muonInfoSwitch.m_recoWPs ) {
         std::vector< std::string >* tmp_reco_sys(nullptr);
         if ( m_store->retrieve(tmp_reco_sys, "MuonEfficiencyCorrector_RecoSyst_" + reco).isSuccess() ) {
-          (m_RecoEff_SF_sysNames)[ reco ] = *tmp_reco_sys;
+          (m_MuonRecoEff_SF_sysNames)[ reco ] = *tmp_reco_sys;
         }
       }
     }
@@ -349,7 +386,7 @@ void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vert
       for ( auto& isol : muonInfoSwitch.m_isolWPs ) {
         std::vector< std::string >* tmp_iso_sys(nullptr);
         if ( m_store->retrieve(tmp_iso_sys, "MuonEfficiencyCorrector_IsoSyst_" + isol).isSuccess() ) {
-          (m_IsoEff_SF_sysNames)[ isol ] = *tmp_iso_sys;
+          (m_MuonIsoEff_SF_sysNames)[ isol ] = *tmp_iso_sys;
         }
       }
     }
@@ -358,7 +395,7 @@ void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vert
       for ( auto& trig : muonInfoSwitch.m_trigWPs ) {
         std::vector< std::string >* tmp_trig_sys(nullptr);
         if ( m_store->retrieve(tmp_trig_sys, "MuonEfficiencyCorrector_TrigSyst_" + trig).isSuccess() ) {
-          (m_TrigEff_SF_sysNames)[ trig ] = *tmp_trig_sys;
+          (m_MuonTrigEff_SF_sysNames)[ trig ] = *tmp_trig_sys;
         }
       }
     }
@@ -366,7 +403,7 @@ void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vert
     if ( muonInfoSwitch.m_ttvaEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
       std::vector< std::string >* tmp_ttva_sys(nullptr);
       if ( m_store->retrieve(tmp_ttva_sys, "MuonEfficiencyCorrector_TTVASyst_TTVA").isSuccess() ) {
-        m_TTVAEff_SF_sysNames = *tmp_ttva_sys;
+        m_MuonTTVAEff_SF_sysNames = *tmp_ttva_sys;
       }
     }
 
@@ -378,7 +415,7 @@ void HelpTreeBase::FillMuons( const xAOD::MuonContainer* muons, const xAOD::Vert
 
 }
 
-void HelpTreeBase::FillMuon( const xAOD::Muon* muon, const xAOD::Vertex* primaryVertex, const std::string muonName ) {
+void HelpTreeBase::FillMuon( const xAOD::Muon* muon, const xAOD::Vertex* primaryVertex, const std::string& muonName ) {
 
   xAH::MuonContainer* thisMuon = m_muons[muonName];
 
@@ -389,7 +426,7 @@ void HelpTreeBase::FillMuon( const xAOD::Muon* muon, const xAOD::Vertex* primary
   return;
 }
 
-void HelpTreeBase::ClearMuons(const std::string muonName) {
+void HelpTreeBase::ClearMuons(const std::string& muonName) {
 
   std::string tname = m_tree->GetName();
   xAH::MuonContainer* thisMuon = m_muons[muonName];
@@ -399,24 +436,24 @@ void HelpTreeBase::ClearMuons(const std::string muonName) {
 
     if ( muonInfoSwitch.m_recoEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
       for ( auto& reco : muonInfoSwitch.m_recoWPs ) {
-          (m_RecoEff_SF_sysNames)[ reco ].clear();
+          (m_MuonRecoEff_SF_sysNames)[ reco ].clear();
         }
     }
 
     if ( muonInfoSwitch.m_isoEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
       for ( auto& isol : muonInfoSwitch.m_isolWPs ) {
-          (m_IsoEff_SF_sysNames)[ isol ].clear();
+          (m_MuonIsoEff_SF_sysNames)[ isol ].clear();
         }
     }
 
     if ( muonInfoSwitch.m_trigEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
       for ( auto& trig : muonInfoSwitch.m_trigWPs ) {
-          (m_TrigEff_SF_sysNames)[ trig ].clear();
+          (m_MuonTrigEff_SF_sysNames)[ trig ].clear();
         }
     }
 
     if ( muonInfoSwitch.m_ttvaEff_sysNames && muonInfoSwitch.m_effSF && m_isMC ) {
-       m_TTVAEff_SF_sysNames.clear();
+       m_MuonTTVAEff_SF_sysNames.clear();
     }
 
   }
@@ -433,20 +470,20 @@ void HelpTreeBase::ClearMuons(const std::string muonName) {
  *
  ********************/
 
-void HelpTreeBase::AddElectrons(const std::string detailStr, const std::string elecName) {
+void HelpTreeBase::AddElectrons(const std::string& detailStr, const std::string& elecName) {
 
   if(m_debug)  Info("AddElectrons()", "Adding electron variables: %s", detailStr.c_str());
 
-  m_elecs[elecName] = new xAH::ElectronContainer(elecName, detailStr, m_units, m_isMC, strcmp(m_tree->GetName(), "nominal") == 0);
+  m_elecs[elecName] = new xAH::ElectronContainer(elecName, detailStr, m_units, m_isMC, m_nominalTree);
 
   xAH::ElectronContainer* thisElec = m_elecs[elecName];
 
   thisElec->setBranches(m_tree);
-  this->AddElectronsUser(elecName);
+  this->AddElectronsUser(detailStr, elecName);
 }
 
 
-void HelpTreeBase::FillElectrons( const xAOD::ElectronContainer* electrons, const xAOD::Vertex* primaryVertex, const std::string elecName ) {
+void HelpTreeBase::FillElectrons( const xAOD::ElectronContainer* electrons, const xAOD::Vertex* primaryVertex, const std::string& elecName ) {
 
   this->ClearElectrons(elecName);
 
@@ -455,7 +492,7 @@ void HelpTreeBase::FillElectrons( const xAOD::ElectronContainer* electrons, cons
   }
 }
 
-void HelpTreeBase::FillElectron ( const xAOD::Electron* elec, const xAOD::Vertex* primaryVertex, const std::string elecName ) {
+void HelpTreeBase::FillElectron ( const xAOD::Electron* elec, const xAOD::Vertex* primaryVertex, const std::string& elecName ) {
 
   xAH::ElectronContainer* thisElec = m_elecs[elecName];
 
@@ -467,7 +504,7 @@ void HelpTreeBase::FillElectron ( const xAOD::Electron* elec, const xAOD::Vertex
 }
 
 
-void HelpTreeBase::ClearElectrons(const std::string elecName) {
+void HelpTreeBase::ClearElectrons(const std::string& elecName) {
 
   xAH::ElectronContainer* thisElec = m_elecs[elecName];
   thisElec->clear();
@@ -481,7 +518,7 @@ void HelpTreeBase::ClearElectrons(const std::string elecName) {
  *
  ********************/
 
-void HelpTreeBase::AddPhotons(const std::string detailStr, const std::string photonName) {
+void HelpTreeBase::AddPhotons(const std::string& detailStr, const std::string& photonName) {
 
   if(m_debug)  Info("AddPhotons()", "Adding photon variables: %s", detailStr.c_str());
 
@@ -490,11 +527,11 @@ void HelpTreeBase::AddPhotons(const std::string detailStr, const std::string pho
   xAH::PhotonContainer* thisPhoton = m_photons[photonName];
 
   thisPhoton->setBranches(m_tree);
-  this->AddPhotonsUser(photonName);
+  this->AddPhotonsUser(detailStr, photonName);
 }
 
 
-void HelpTreeBase::FillPhotons( const xAOD::PhotonContainer* photons, const std::string photonName ) {
+void HelpTreeBase::FillPhotons( const xAOD::PhotonContainer* photons, const std::string& photonName ) {
 
   this->ClearPhotons(photonName);
 
@@ -503,7 +540,7 @@ void HelpTreeBase::FillPhotons( const xAOD::PhotonContainer* photons, const std:
   }
 }
 
-void HelpTreeBase::FillPhoton( const xAOD::Photon* photon, const std::string photonName ) {
+void HelpTreeBase::FillPhoton( const xAOD::Photon* photon, const std::string& photonName ) {
 
   xAH::PhotonContainer* thisPhoton = m_photons[photonName];
 
@@ -515,7 +552,7 @@ void HelpTreeBase::FillPhoton( const xAOD::Photon* photon, const std::string pho
 }
 
 
-void HelpTreeBase::ClearPhotons(const std::string photonName) {
+void HelpTreeBase::ClearPhotons(const std::string& photonName) {
 
   xAH::PhotonContainer* thisPhoton = m_photons[photonName];
   thisPhoton->clear();
@@ -525,39 +562,86 @@ void HelpTreeBase::ClearPhotons(const std::string photonName) {
 
 /*********************
  *
+ * CLUSTERS
+ *
+ *********************/
+
+void HelpTreeBase::AddClusters(const std::string& detailStr, const std::string& clusterName) {
+
+  if(m_debug)  Info("AddClusters()", "Adding cluster variables: %s", detailStr.c_str());
+
+  m_clusters[clusterName] = new xAH::ClusterContainer(clusterName, detailStr, m_units, m_isMC);
+
+  xAH::ClusterContainer* thisCluster = m_clusters[clusterName];
+
+  thisCluster->setBranches(m_tree);
+  this->AddClustersUser(detailStr, clusterName);
+}
+
+
+void HelpTreeBase::FillClusters( const xAOD::CaloClusterContainer* clusters, const std::string& clusterName ) {
+
+  this->ClearClusters(clusterName);
+
+  for ( auto cl_itr : *clusters ) {
+    this->FillCluster(cl_itr, clusterName);
+  }
+}
+
+void HelpTreeBase::FillCluster( const xAOD::CaloCluster* cluster, const std::string& clusterName ) {
+
+  xAH::ClusterContainer* thisCluster = m_clusters[clusterName];
+
+  thisCluster->FillCluster(cluster);
+
+  this->FillClustersUser(cluster, clusterName);
+
+  return;
+}
+
+
+void HelpTreeBase::ClearClusters(const std::string& clusterName) {
+
+  xAH::ClusterContainer* thisCluster = m_clusters[clusterName];
+  thisCluster->clear();
+
+  this->ClearClustersUser(clusterName);
+}
+
+/*********************
+ *
  *   L1 JETS
  *
  ********************/
 
-void HelpTreeBase::AddL1Jets()
+void HelpTreeBase::AddL1Jets( const std::string& jetName)
 {
 
-  if(m_debug) Info("AddL1Jets()", "Adding kinematics jet variables");
+  if(m_debug) Info("AddL1Jets()", "Adding %s L1 jets", jetName.c_str());
 
-  m_tree->Branch("nL1Jets",     &m_nL1Jet,"nL1Jets/I");
-  m_tree->Branch("L1Jet_et8x8", &m_l1Jet_et8x8);
-  m_tree->Branch("L1Jet_eta",   &m_l1Jet_eta);
-  m_tree->Branch("L1Jet_phi",   &m_l1Jet_phi);
+  m_l1Jets[jetName] = new xAH::L1JetContainer(jetName, m_units, m_isMC);
+  m_l1Jets[jetName]->m_debug = m_debug;
+
+  xAH::L1JetContainer* thisL1Jet = m_l1Jets[jetName];
+  thisL1Jet->setBranches(m_tree);
 
 }
 
-void HelpTreeBase::FillL1Jets( const xAOD::JetRoIContainer* jets ) {
+void HelpTreeBase::FillL1Jets( const xAOD::JetRoIContainer* jets, const std::string& jetName, bool sortL1Jets ) {
 
-  this->ClearL1Jets();
+  this->ClearL1Jets(jetName);
 
-  for( auto jet_itr : *jets ) {
-    m_l1Jet_et8x8.push_back ( jet_itr->et8x8() / m_units );
-    m_l1Jet_eta.push_back( jet_itr->eta() );
-    m_l1Jet_phi.push_back( jet_itr->phi() );
-    m_nL1Jet++;
-  }
+  xAH::L1JetContainer* thisL1Jet = m_l1Jets[jetName];
+  
+  thisL1Jet->FillL1Jets(jets,sortL1Jets);
+
 }
 
-void HelpTreeBase::ClearL1Jets() {
-  m_nL1Jet = 0;
-  m_l1Jet_et8x8.clear();
-  m_l1Jet_eta.clear();
-  m_l1Jet_phi.clear();
+void HelpTreeBase::ClearL1Jets(const std::string& jetName) {
+
+  xAH::L1JetContainer* thisL1Jet = m_l1Jets[jetName];
+  thisL1Jet->clear();
+
 }
 
 
@@ -567,7 +651,7 @@ void HelpTreeBase::ClearL1Jets() {
  *
  ********************/
 
-void HelpTreeBase::AddJets(const std::string detailStr, const std::string jetName)
+void HelpTreeBase::AddJets(const std::string& detailStr, const std::string& jetName)
 {
 
   if(m_debug) Info("AddJets()", "Adding jet %s with variables: %s", jetName.c_str(), detailStr.c_str());
@@ -582,7 +666,7 @@ void HelpTreeBase::AddJets(const std::string detailStr, const std::string jetNam
 }
 
 
-void HelpTreeBase::FillJets( const xAOD::JetContainer* jets, int pvLocation, const std::string jetName ) {
+void HelpTreeBase::FillJets( const xAOD::JetContainer* jets, int pvLocation, const std::string& jetName ) {
 
   this->ClearJets(jetName);
 
@@ -592,21 +676,9 @@ void HelpTreeBase::FillJets( const xAOD::JetContainer* jets, int pvLocation, con
   xAH::JetContainer* thisJet = m_jets[jetName];
 
   if( thisJet->m_infoSwitch.m_trackPV || thisJet->m_infoSwitch.m_allTrack ) {
-    HelperFunctions::retrieve( vertices, "PrimaryVertices", m_event, 0);
+    HelperFunctions::retrieve( vertices, m_vertexContainerName, m_event, 0);
     pvLocation = HelperFunctions::getPrimaryVertexLocation( vertices );
     if ( pvLocation >= 0 ) pv = vertices->at( pvLocation );
-  }
-
-
-
-  // Global event BTag SF weight (--> the product of each object's weight)
-  //
-  if ( m_isMC ) {
-    const xAOD::EventInfo* eventInfo(nullptr);
-    HelperFunctions::retrieve(eventInfo, "EventInfo", m_event, m_store);
-
-    thisJet->FillGlobalBTagSF(eventInfo);
-
   }
 
   for( auto jet_itr : *jets ) {
@@ -617,7 +689,7 @@ void HelpTreeBase::FillJets( const xAOD::JetContainer* jets, int pvLocation, con
 
 
 
-void HelpTreeBase::FillJet( const xAOD::Jet* jet_itr, const xAOD::Vertex* pv, int pvLocation, const std::string jetName ) {
+void HelpTreeBase::FillJet( const xAOD::Jet* jet_itr, const xAOD::Vertex* pv, int pvLocation, const std::string& jetName ) {
 
   xAH::JetContainer* thisJet = m_jets[jetName];
 
@@ -628,7 +700,7 @@ void HelpTreeBase::FillJet( const xAOD::Jet* jet_itr, const xAOD::Vertex* pv, in
   return;
 }
 
-void HelpTreeBase::ClearJets(const std::string jetName) {
+void HelpTreeBase::ClearJets(const std::string& jetName) {
 
   xAH::JetContainer* thisJet = m_jets[jetName];
   thisJet->clear();
@@ -643,7 +715,7 @@ void HelpTreeBase::ClearJets(const std::string jetName) {
  *
  ********************/
 
-void HelpTreeBase::AddTruthParts(const std::string truthName, const std::string detailStr)
+void HelpTreeBase::AddTruthParts(const std::string& detailStr, const std::string& truthName)
 {
 
   if(m_debug) Info("AddTruthParts()", "Adding truth particle %s with variables: %s", truthName.c_str(), detailStr.c_str());
@@ -651,10 +723,10 @@ void HelpTreeBase::AddTruthParts(const std::string truthName, const std::string 
 
   xAH::TruthContainer* thisTruth = m_truth[truthName];
   thisTruth->setBranches(m_tree);
-  this->AddTruthUser(truthName);
+  this->AddTruthUser(truthName, detailStr);
 }
 
-void HelpTreeBase::FillTruth( const std::string truthName, const xAOD::TruthParticleContainer* truthParts ) {
+void HelpTreeBase::FillTruth( const xAOD::TruthParticleContainer* truthParts, const std::string& truthName  ) {
 
   this->ClearTruth(truthName);
 
@@ -673,18 +745,18 @@ void HelpTreeBase::FillTruth( const std::string truthName, const xAOD::TruthPart
 
 }
 
-void HelpTreeBase::FillTruth( const xAOD::TruthParticle* truthPart, const std::string truthName )
+void HelpTreeBase::FillTruth( const xAOD::TruthParticle* truthPart, const std::string& truthName )
 {
   xAH::TruthContainer* thisTruth = m_truth[truthName];
 
   thisTruth->FillTruth(truthPart);
 
-  this->FillTruthUser(truthName, truthPart);
+  this->FillTruthUser(truthPart, truthName);
 
   return;
 }
 
-void HelpTreeBase::ClearTruth(const std::string truthName) {
+void HelpTreeBase::ClearTruth(const std::string& truthName) {
 
   xAH::TruthContainer* thisTruth = m_truth[truthName];
   thisTruth->clear();
@@ -699,17 +771,17 @@ void HelpTreeBase::ClearTruth(const std::string truthName) {
  *
  ********************/
 
-void HelpTreeBase::AddTrackParts(const std::string trackName, const std::string detailStr)
+void HelpTreeBase::AddTrackParts(const std::string& detailStr, const std::string& trackName)
 {
   if(m_debug) Info("AddTrackParts()", "Adding track particle %s with variables: %s", trackName.c_str(), detailStr.c_str());
   m_tracks[trackName] = new xAH::TrackContainer(trackName, detailStr, m_units);
 
   xAH::TrackContainer* thisTrack = m_tracks[trackName];
   thisTrack->setBranches(m_tree);
-  this->AddTracksUser(trackName);
+  this->AddTracksUser(trackName, detailStr);
 }
 
-void HelpTreeBase::FillTracks( const std::string trackName, const xAOD::TrackParticleContainer* trackParts ) {
+void HelpTreeBase::FillTracks( const xAOD::TrackParticleContainer* trackParts, const std::string& trackName  ) {
 
   this->ClearTracks(trackName);
 
@@ -728,18 +800,18 @@ void HelpTreeBase::FillTracks( const std::string trackName, const xAOD::TrackPar
 
 }
 
-void HelpTreeBase::FillTrack( const xAOD::TrackParticle* trackPart, const std::string trackName )
+void HelpTreeBase::FillTrack( const xAOD::TrackParticle* trackPart, const std::string& trackName )
 {
   xAH::TrackContainer* thisTrack = m_tracks[trackName];
 
   thisTrack->FillTrack(trackPart);
 
-  this->FillTracksUser(trackName, trackPart);
+  this->FillTracksUser(trackPart, trackName);
 
   return;
 }
 
-void HelpTreeBase::ClearTracks(const std::string trackName) {
+void HelpTreeBase::ClearTracks(const std::string& trackName) {
 
   xAH::TrackContainer* thisTrack = m_tracks[trackName];
   thisTrack->clear();
@@ -755,18 +827,19 @@ void HelpTreeBase::ClearTracks(const std::string trackName) {
  ********************/
 
 // make a unique container:suffix key to lookup the branches in the maps
-std::string HelpTreeBase::FatJetCollectionName(const std::string fatjetName,
-					       const std::string suffix) {
+std::string HelpTreeBase::FatJetCollectionName(const std::string& fatjetName,
+					       const std::string& suffix) {
   return suffix.empty() ? fatjetName : (fatjetName + ":" + suffix);
 }
 
-void HelpTreeBase::AddFatJets(const std::string detailStr, const std::string fatjetName,
-			      const std::string suffix) {
+void HelpTreeBase::AddFatJets(const std::string& detailStr, const std::string& fatjetName,
+			      const std::string& subjetDetailStr,
+			      const std::string& suffix) {
 
   if(m_debug) Info("AddFatJets()", "Adding fat jet variables: %s", detailStr.c_str());
 
-  const std::string collectionName = FatJetCollectionName(fatjetName, suffix);
-  m_fatjets[collectionName] = new xAH::FatJetContainer(fatjetName, detailStr, suffix, m_units, m_isMC);
+  const std::string& collectionName = FatJetCollectionName(fatjetName, suffix);
+  m_fatjets[collectionName] = new xAH::FatJetContainer(fatjetName, detailStr, subjetDetailStr, suffix, m_units, m_isMC);
 
   xAH::FatJetContainer* thisFatJet = m_fatjets[collectionName];
   thisFatJet->setBranches(m_tree);
@@ -774,11 +847,11 @@ void HelpTreeBase::AddFatJets(const std::string detailStr, const std::string fat
   this->AddFatJetsUser(detailStr, fatjetName, suffix);
 }
 
-void HelpTreeBase::AddTruthFatJets(const std::string detailStr, const std::string truthFatJetName) {
+void HelpTreeBase::AddTruthFatJets(const std::string& detailStr, const std::string& truthFatJetName) {
 
   if(m_debug) Info("AddTruthFatJets()", "Adding fat jet variables: %s", detailStr.c_str());
 
-  m_truth_fatjets[truthFatJetName] = new xAH::FatJetContainer(truthFatJetName, detailStr, "", m_units, m_isMC);
+  m_truth_fatjets[truthFatJetName] = new xAH::FatJetContainer(truthFatJetName, detailStr, "", "", m_units, m_isMC);
 
   xAH::FatJetContainer* thisTruthFatJet = m_truth_fatjets[truthFatJetName];
   thisTruthFatJet->setBranches(m_tree);
@@ -787,57 +860,56 @@ void HelpTreeBase::AddTruthFatJets(const std::string detailStr, const std::strin
 }
 
 
-void HelpTreeBase::FillFatJets( const xAOD::JetContainer* fatJets , const std::string fatjetName, const std::string suffix) {
+void HelpTreeBase::FillFatJets( const xAOD::JetContainer* fatJets , int pvLocation, const std::string& fatjetName, const std::string& suffix ) {
 
   this->ClearFatJets(fatjetName, suffix);
 
   for( auto fatjet_itr : *fatJets ) {
 
-    this->FillFatJet(fatjet_itr, fatjetName, suffix);
+    this->FillFatJet(fatjet_itr, pvLocation, fatjetName, suffix);
 
   } // loop over fat jets
 
 }
 
-void HelpTreeBase::FillFatJet( const xAOD::Jet* fatjet_itr, const std::string fatjetName, const std::string suffix ) {
+void HelpTreeBase::FillFatJet( const xAOD::Jet* fatjet_itr, int pvLocation, const std::string& fatjetName, const std::string& suffix ) {
 
-  const std::string collectionName = FatJetCollectionName(fatjetName, suffix);
+  const std::string& collectionName = FatJetCollectionName(fatjetName, suffix);
   xAH::FatJetContainer* thisFatJet = m_fatjets[collectionName];
 
-  thisFatJet->FillFatJet(fatjet_itr);
+  thisFatJet->FillFatJet(fatjet_itr, pvLocation);
 
-  this->FillFatJetsUser(fatjet_itr, fatjetName, suffix);
+  this->FillFatJetsUser(fatjet_itr, pvLocation, fatjetName, suffix);
 
   return;
 }
 
 
-
-void HelpTreeBase::FillTruthFatJets( const xAOD::JetContainer* truthTruthFatJets, const std::string truthFatJetName ) {
-  this->ClearTruthFatJets();
+void HelpTreeBase::FillTruthFatJets( const xAOD::JetContainer* truthTruthFatJets, int pvLocation, const std::string& truthFatJetName ) {
+  this->ClearTruthFatJets(truthFatJetName);
 
   for( auto truth_fatjet_itr : *truthTruthFatJets ) {
 
-    this->FillTruthFatJet(truth_fatjet_itr, truthFatJetName);
+    this->FillTruthFatJet(truth_fatjet_itr, pvLocation, truthFatJetName);
 
-  } // loop over fat jets
+  } // loop over truth fat jets
 
 }
 
-void HelpTreeBase::FillTruthFatJet( const xAOD::Jet* truth_fatjet_itr, const std::string truthFatJetName ) {
+void HelpTreeBase::FillTruthFatJet( const xAOD::Jet* truth_fatjet_itr, int pvLocation, const std::string& truthFatJetName ) {
 
   xAH::FatJetContainer* thisTruthFatJet = m_truth_fatjets[truthFatJetName];
 
-  thisTruthFatJet->FillFatJet(truth_fatjet_itr);
+  thisTruthFatJet->FillFatJet(truth_fatjet_itr, pvLocation);
 
-  this->FillTruthFatJetsUser(truth_fatjet_itr, truthFatJetName);
+  this->FillTruthFatJetsUser(truth_fatjet_itr, pvLocation, truthFatJetName);
 
   return;
 }
 
 
-void HelpTreeBase::ClearFatJets(const std::string fatjetName, const std::string suffix) {
-  const std::string collectionName = FatJetCollectionName(fatjetName, suffix);
+void HelpTreeBase::ClearFatJets(const std::string& fatjetName, const std::string& suffix) {
+  const std::string& collectionName = FatJetCollectionName(fatjetName, suffix);
 
   xAH::FatJetContainer* thisFatJet = m_fatjets[collectionName];
   thisFatJet->clear();
@@ -845,7 +917,7 @@ void HelpTreeBase::ClearFatJets(const std::string fatjetName, const std::string 
   this->ClearFatJetsUser(fatjetName, suffix);
 }
 
-void HelpTreeBase::ClearTruthFatJets(const std::string truthFatJetName) {
+void HelpTreeBase::ClearTruthFatJets(const std::string& truthFatJetName) {
 
   xAH::FatJetContainer* thisTruthFatJet = m_truth_fatjets[truthFatJetName];
   thisTruthFatJet->clear();
@@ -865,19 +937,19 @@ void HelpTreeBase::ClearEvent() {
  *
  ********************/
 
-void HelpTreeBase::AddTaus(const std::string detailStr, const std::string tauName) {
+void HelpTreeBase::AddTaus(const std::string& detailStr, const std::string& tauName) {
 
   if ( m_debug )  Info("AddTaus()", "Adding tau variables: %s", detailStr.c_str());
 
-  m_taus[tauName] = new xAH::TauContainer(tauName, detailStr, m_units, m_isMC);
+  m_taus[tauName] = new xAH::TauContainer(tauName, detailStr, m_units, m_isMC, m_nominalTree);
 
   xAH::TauContainer* thisTau = m_taus[tauName];
 
   thisTau->setBranches(m_tree);
-  this->AddTausUser();
+  this->AddTausUser(detailStr, tauName);
 }
 
-void HelpTreeBase::FillTaus( const xAOD::TauJetContainer* taus, const std::string tauName ) {
+void HelpTreeBase::FillTaus( const xAOD::TauJetContainer* taus, const std::string& tauName ) {
 
   this->ClearTaus();
 
@@ -886,7 +958,7 @@ void HelpTreeBase::FillTaus( const xAOD::TauJetContainer* taus, const std::strin
   }
 }
 
-void HelpTreeBase::FillTau( const xAOD::TauJet* tau, const std::string tauName ) {
+void HelpTreeBase::FillTau( const xAOD::TauJet* tau, const std::string& tauName ) {
 
   xAH::TauContainer* thisTau = m_taus[tauName];
 
@@ -895,9 +967,10 @@ void HelpTreeBase::FillTau( const xAOD::TauJet* tau, const std::string tauName )
   this->FillTausUser(tau, tauName);
 }
 
-void HelpTreeBase::ClearTaus(const std::string tauName) {
+void HelpTreeBase::ClearTaus(const std::string& tauName) {
 
   xAH::TauContainer* thisTau = m_taus[tauName];
+
   thisTau->clear();
 
   this->ClearTausUser(tauName);
@@ -911,28 +984,36 @@ void HelpTreeBase::ClearTaus(const std::string tauName) {
  *     MET
  *
  ********************/
-void HelpTreeBase::AddMET( const std::string detailStr ) {
+void HelpTreeBase::AddMET( const std::string& detailStr, const std::string& metName ) {
 
   if(m_debug) Info("AddMET()", "Adding MET variables: %s", detailStr.c_str());
 
-  m_met = new xAH::MetContainer(detailStr, m_units);
-  m_met -> setBranches(m_tree);
-  this->AddMETUser();
+  m_met[metName] = new xAH::MetContainer(metName, detailStr, m_units);
+
+  xAH::MetContainer* thisMet = m_met[metName];
+
+  thisMet->setBranches(m_tree);
+  this->AddMETUser(detailStr, metName);
 }
 
-void HelpTreeBase::FillMET( const xAOD::MissingETContainer* met ) {
+void HelpTreeBase::FillMET( const xAOD::MissingETContainer* met, const std::string& metName ) {
 
   // Clear previous events
-  this->ClearMET();
-  this->ClearMETUser();
+  this->ClearMET(metName);
 
-  m_met->FillMET(met);
+  xAH::MetContainer* thisMet = m_met[metName];
 
-  this->FillMETUser(met);
+  thisMet->FillMET(met);
+
+  this->FillMETUser(met, metName);
 }
 
-void HelpTreeBase::ClearMET() {
-  m_met->clear();
+void HelpTreeBase::ClearMET( const std::string& metName ) {
+  xAH::MetContainer* thisMet = m_met[metName];
+
+  thisMet->clear();
+
+  this->ClearMETUser(metName);
 }
 
 
@@ -942,3 +1023,68 @@ bool HelpTreeBase::writeTo( TFile* file ) {
   if ( status == 0 ) { return false; }
   return true;
 }
+
+/*********************
+ *
+ *   VERTICES
+ *
+ ********************/
+
+void HelpTreeBase::AddVertices( const std::string& detailStr, const std::string& vertexName )
+{
+
+  if(m_debug) Info("AddVertices()", "Adding %s vertices", vertexName.c_str());
+
+  m_vertices[vertexName] = new xAH::VertexContainer(detailStr, vertexName);
+  xAH::VertexContainer* thisVertex = m_vertices[vertexName];
+  thisVertex->setBranches(m_tree);
+
+}
+
+void HelpTreeBase::FillVertices( const xAOD::VertexContainer* vertices, const std::string& vertexName ) {
+
+  this->ClearVertices(vertexName);
+
+  xAH::VertexContainer* thisVertex = m_vertices[vertexName];
+
+  thisVertex->FillVertices(vertices);
+
+}
+
+void HelpTreeBase::ClearVertices( const std::string& vertexName )
+{
+
+  xAH::VertexContainer* thisVertex = m_vertices[vertexName];
+  thisVertex->clear();
+
+}
+
+void HelpTreeBase::AddTruthVertices( const std::string& detailStr, const std::string& truthVertexName )
+{
+
+  if(m_debug) Info("AddTruthVertices()", "Adding %s vertices", truthVertexName.c_str());
+
+  m_truth_vertices[truthVertexName] = new xAH::VertexContainer(detailStr, truthVertexName);
+  xAH::VertexContainer* thisTruthVertex = m_truth_vertices[truthVertexName];
+  thisTruthVertex->setBranches(m_tree);
+
+}
+
+void HelpTreeBase::FillTruthVertices( const xAOD::TruthVertexContainer* truthVertices, const std::string& truthVertexName ) {
+
+  this->ClearTruthVertices(truthVertexName);
+
+  xAH::VertexContainer* thisTruthVertex = m_truth_vertices[truthVertexName];
+
+  thisTruthVertex->FillTruthVertices(truthVertices);
+
+}
+
+void HelpTreeBase::ClearTruthVertices( const std::string& truthVertexName )
+{
+
+  xAH::VertexContainer* thisTruthVertex = m_truth_vertices[truthVertexName];
+  thisTruthVertex->clear();
+
+}
+

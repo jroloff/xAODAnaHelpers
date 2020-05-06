@@ -18,7 +18,7 @@
 // external tools include(s):
 #include "AsgTools/AnaToolHandle.h"
 #include "IsolationSelection/IIsolationSelectionTool.h"
-#include "MuonSelectorTools/IMuonSelectionTool.h"
+#include "MuonAnalysisInterfaces/IMuonSelectionTool.h"
 #include "TriggerMatchingTool/IMatchingTool.h"
 #include "TrigDecisionTool/TrigDecisionTool.h"
 
@@ -82,10 +82,12 @@ public:
   bool           m_removeEventBadMuon = true;
 
   // isolation
+  /** enable or disable isolation **/
+  bool           m_doIsolation = true;
   /** reject objects which do not pass this isolation cut - default = "" (no cut) */
   std::string    m_MinIsoWPCut = "";
   /** decorate objects with 'isIsolated_*' flag for each WP in this input list - default = all current ASG WPs */
-  std::string    m_IsoWPList = "LooseTrackOnly,Loose,Tight,Gradient,GradientLoose";
+  std::string    m_IsoWPList = "FCTightTrackOnly_FixedRad,FCLoose_FixedRad,FCTight_FixedRad,FixedCutPflowTight,FixedCutPflowLoose";
   /** to define a custom WP - make sure "UserDefined" is added in the above input list! */
   std::string    m_CaloIsoEff = "0.1*x+90";
   /** to define a custom WP - make sure "UserDefined" is added in the above input list! */
@@ -103,9 +105,6 @@ public:
   /// @brief Recommended threshold for muon triggers: see https://svnweb.cern.ch/trac/atlasoff/browser/Trigger/TrigAnalysis/TriggerMatchingTool/trunk/src/TestMatchingToolAlg.cxx
   double         m_minDeltaR = 0.1;
 
-  /** @brief trigDecTool name for configurability if name is not default.  If empty, use the default name. If not empty, change the name. */
-  std::string m_trigDecTool_name{"xAH_TDT"};
-
 private:
 
   int            m_muonQuality; //!
@@ -121,7 +120,7 @@ private:
   TH1D* m_cutflowHistW = nullptr;     //!
   int   m_cutflow_bin;      //!
 
-  bool  m_isUsedBefore;     //!
+  bool  m_isUsedBefore = false;     //!
 
   // object cutflow
   TH1D* m_mu_cutflowHist_1 = nullptr;                 //!
@@ -146,19 +145,14 @@ private:
   std::vector<std::string>            m_diMuTrigChainsList;     //!  /* contains all the HLT trigger chains tokens extracted from m_diMuTrigChains */
 
   // tools
-  asg::AnaToolHandle<CP::IIsolationSelectionTool>  m_isolationSelectionTool_handle{"CP::IsolationSelectionTool"};   //!
+  asg::AnaToolHandle<CP::IIsolationSelectionTool>  m_isolationSelectionTool_handle{"CP::IsolationSelectionTool/IsolationSelectionTool", this}; //!
   // this only exists because the interface needs to be updated, complain on pathelp, remove forward declaration for this when fixed
-  CP::IsolationSelectionTool*                      m_isolationSelectionTool{nullptr};                               //!
-  asg::AnaToolHandle<CP::IMuonSelectionTool>       m_muonSelectionTool_handle{"CP::MuonSelectionTool"};             //!
-  asg::AnaToolHandle<Trig::IMatchingTool>          m_trigMuonMatchTool_handle{"Trig::MatchingTool"};                //!
-  /**
-    @rst
-      The name of this tool (if needs to be changed) can be set with :cpp:member:`MuonSelector::m_trigDecTool_name`.
-    @endrst
-  */
-  asg::AnaToolHandle<Trig::TrigDecisionTool>       m_trigDecTool_handle{"Trig::TrigDecisionTool"};                  //!
+  CP::IsolationSelectionTool*                      m_isolationSelectionTool{nullptr}; //!
+  asg::AnaToolHandle<CP::IMuonSelectionTool>       m_muonSelectionTool_handle     {"CP::MuonSelectionTool/MuonSelectionTool"          , this}; //!
+  asg::AnaToolHandle<Trig::IMatchingTool>          m_trigMuonMatchTool_handle     {"Trig::MatchingTool/MatchingTool"                  , this}; //!
+  asg::AnaToolHandle<Trig::TrigDecisionTool>       m_trigDecTool_handle           {"Trig::TrigDecisionTool/TrigDecisionTool"                       }; //!
 
-  /// @brief This internal variable gets set to false if no triggers are defined or if TrigDecisionTool is missing 
+  /// @brief This internal variable gets set to false if no triggers are defined or if TrigDecisionTool is missing
   bool m_doTrigMatch = true; //!
 
   // variables that don't get filled at submission time should be

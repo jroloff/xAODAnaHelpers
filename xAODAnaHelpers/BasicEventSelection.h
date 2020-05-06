@@ -48,14 +48,21 @@
 class BasicEventSelection : public xAH::Algorithm
 {
   public:
+  // Sample type settings
     /// @brief Protection when running on truth xAOD
     bool m_truthLevelOnly = false;
+
+  /** @rst
+      SimulationFlavour will be determined from the sample MetaData, unless AFII or FS is explicitely requested with the following flags.
+      @endrst */
+    bool m_setAFII = false;
+    bool m_setFS = false;
 
   // GRL
     /// @brief Apply GRL selection
     bool m_applyGRLCut = false;
     /// @brief Path to GRL XML file
-    std::string m_GRLxml = "xAODAnaHelpers/data15_13TeV.periodAllYear_HEAD_DQDefects-00-01-02_PHYS_StandardGRL_Atlas_Ready.xml";
+    std::string m_GRLxml = "";
     /// @brief Run numbers to skip in GRL
     std::string m_GRLExcludeList = "";
 
@@ -73,17 +80,38 @@ class BasicEventSelection : public xAH::Algorithm
     */
     bool m_doPUreweighting = false;
     bool m_doPUreweightingSys = false;
+
     /// @brief Comma separated list of filenames
     std::string m_lumiCalcFileNames = "";
     /// @brief Comma separated list of filenames
     std::string m_PRWFileNames = "";
+    /// @brief Automatically configure PRW using config files from SUSYTools instead of using m_PRWFileNames.
+    bool m_autoconfigPRW = false;
+    /// @brief actualMu configuration file for the MC16a campaign (2015/2016). Added to the PRW tool when using PRW autoconfiguration.
+    std::string m_prwActualMu2016File = "";
+    /// @brief actualMu configuration file for the MC16d campaign (2017). Added to the PRW tool when using PRW autoconfiguration.
+    std::string m_prwActualMu2017File = "";
+    /// @brief actualMu configuration file for the MC16e campaign (2018). Added to the PRW tool when using PRW autoconfiguration.
+    std::string m_prwActualMu2018File = "";
+    /**
+      @rst
+      mc16(acd) to bypass the automatic campaign determination from AMI, several campaigns can be separated by a comma. Only used
+      when m_autoconfigPRW is true
+      @endrst
+    */
+    std::string m_mcCampaign;
+    /// @brief Use Period Configuration or auto
+    std::string m_periodConfig = "auto";
 
-    // Unprescaling data
-    bool m_savePrescaleDataWeight = false;
+    /// @brief The minimum threshold for <tt>EventInfo::actualInteractionsPerCrossing()</tt>
+    int m_actualMuMin = -1; // Default to off
+    /// @brief The maximum threshold for <tt>EventInfo::actualInteractionsPerCrossing()</tt>
+    int m_actualMuMax = -1; // Default to off
 
-  // Primary Vertex
-    /// @brief Name of vertex container
-    std::string m_vertexContainerName = "PrimaryVertices";
+    /// @brief Calculate distance to nearest empty and unpaired BCIDs
+    bool m_calcBCIDInfo = false;
+
+    // Primary Vertex
     /// @brief Enable to apply a primary vertex cut
     bool m_applyPrimaryVertexCut = false;
     /// @brief Minimum number of tracks from **the** primary vertex (Harmonized Cut)
@@ -92,6 +120,13 @@ class BasicEventSelection : public xAH::Algorithm
     // Event Cleaning
     bool m_applyEventCleaningCut = false;
     bool m_applyCoreFlagsCut = false;
+
+    // Jet Cleaning
+    // Jet Cleaning (see also https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/HowToCleanJets2017)
+    /// recommended way to clean all jets, but especially collections other than EMTopo ... equivalent to "loose" jet-by-jet cleaning! 
+    bool m_applyJetCleaningEventFlag = false;
+    /// should only ever be used in 2015 and 2016 data, for analyses which may be of interest for analyses where fake MET can be an issue
+    bool m_applyIsBadBatmanFlag = false;
 
     // Print Branch List
     bool m_printBranchList = false;
@@ -130,6 +165,9 @@ class BasicEventSelection : public xAH::Algorithm
     /// @brief Save master, L1, and HLT key
     bool m_storeTrigKeys = false;
 
+    /// @brief Save the trigger prescale weight
+    bool m_storePrescaleWeight = true;
+
   // Metadata
     /// @brief The name of the derivation (use this as an override)
     std::string m_derivationName = "";
@@ -154,28 +192,25 @@ class BasicEventSelection : public xAH::Algorithm
     /** Check for duplicated events in MC */
     bool m_checkDuplicatesMC = false;
 
-    /** @brief trigDecTool name for configurability if name is not default.  If empty, use the default name. If not empty, change the name. */
-    std::string m_trigDecTool_name{"xAH_TDT"};
-
   private:
 
     std::set<std::pair<uint32_t,uint32_t> > m_RunNr_VS_EvtNr; //!
+    // trigger unprescale chains
+    std::vector<std::string> m_triggerUnprescaleList; //!
+    // decisions of triggers which are saved but not cut on, converted into a list
+    std::vector<std::string> m_extraTriggerSelectionList; //!
 
     // tools
-    asg::AnaToolHandle<IGoodRunsListSelectionTool> m_grl_handle{"GoodRunsListSelectionTool"};                              //!
-    asg::AnaToolHandle<CP::IPileupReweightingTool> m_pileup_tool_handle{"CP::PileupReweightingTool"};                      //!
-    asg::AnaToolHandle<TrigConf::ITrigConfigTool>  m_trigConfTool_handle{"TrigConf::xAODConfigTool"};                      //!
-    /**
-      @rst
-        The name of this tool (if needs to be changed) can be set with :cpp:member:`BasicEventSelection::m_trigDecTool_name`.
-      @endrst
-    */
-    asg::AnaToolHandle<Trig::TrigDecisionTool>     m_trigDecTool_handle{"Trig::TrigDecisionTool"};                         //!
-    asg::AnaToolHandle<IWeightTool>                m_reweightSherpa22_tool_handle{"PMGTools::PMGSherpa22VJetsWeightTool"}; //!
-
-    bool m_isMC;      //!
+    asg::AnaToolHandle<IGoodRunsListSelectionTool> m_grl_handle                  {"GoodRunsListSelectionTool"                                      , this}; //!
+    asg::AnaToolHandle<CP::IPileupReweightingTool> m_pileup_tool_handle          {"CP::PileupReweightingTool/Pileup"                                            }; //!
+    asg::AnaToolHandle<TrigConf::ITrigConfigTool>  m_trigConfTool_handle         {"TrigConf::xAODConfigTool/xAODConfigTool"                        , this}; //!
+    asg::AnaToolHandle<Trig::TrigDecisionTool>     m_trigDecTool_handle          {"Trig::TrigDecisionTool/TrigDecisionTool"                                     }; //!
+    asg::AnaToolHandle<IWeightTool>                m_reweightSherpa22_tool_handle{"PMGTools::PMGSherpa22VJetsWeightTool/PMGSherpa22VJetsWeightTool", this}; //!
 
     int m_eventCounter;     //!
+
+    // sumW
+    TH1D* m_histSumW = nullptr;     //!
 
     // read from MetaData
     TH1D* m_histEventCount = nullptr;          //!
@@ -185,17 +220,21 @@ class BasicEventSelection : public xAH::Algorithm
     double m_MD_finalSumW;	     //!
     double m_MD_initialSumWSquared;  //!
     double m_MD_finalSumWSquared;    //!
+    std::string m_mcCampaignMD; //!
 
     // cutflow
     TH1D* m_cutflowHist = nullptr;      //!
     TH1D* m_cutflowHistW = nullptr;     //!
     int m_cutflow_all;        //!
+    int m_cutflow_init;       //!
     int m_cutflow_duplicates; //!
     int m_cutflow_grl;        //!
     int m_cutflow_lar;        //!
     int m_cutflow_tile;       //!
     int m_cutflow_SCT;        //!
     int m_cutflow_core;       //!
+    int m_cutflow_jetcleaning; //!
+    int m_cutflow_isbadbatman; //!
     int m_cutflow_npv;        //!
     int m_cutflow_trigger;    //!
 
@@ -220,6 +259,18 @@ class BasicEventSelection : public xAH::Algorithm
     // variables that don't get filled at submission time should be
     // protected from being send from the submission node to the worker
     // node (done by the //!)
+
+    /** helper functions */
+    /**
+       @brief Automatically add the required PRW config file for the DSID being processed to the PRW tool.
+       @rst
+       The PRW config files stored by SUSYTools are added to the m_pileup_tool_handle. If the m_mcCampaign is
+       not set, the campaign is determined automatically. If it is set, then all of the campaings listed
+       in the setting are added.
+       @endrst
+    */
+    StatusCode autoconfigurePileupRWTool();
+
   public:
     // Tree *myTree; //!
     // TH1 *myHist; //!

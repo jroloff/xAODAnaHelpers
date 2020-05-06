@@ -19,11 +19,11 @@
 #include "AsgTools/AnaToolHandle.h"
 #include "JetCalibTools/IJetCalibrationTool.h"
 #include "JetCPInterfaces/ICPJetUncertaintiesTool.h"
-#include "JetResolution/IJERTool.h"
-#include "JetResolution/IJERSmearingTool.h"
 #include "JetInterface/IJetSelector.h"
 #include "JetInterface/IJetUpdateJvt.h"
 #include "JetCPInterfaces/IJetTileCorrectionTool.h"
+#include "BoostedJetTaggers/SmoothedWZTagger.h"
+#include "xAODCore/ShallowCopy.h"
 
 // algorithm wrapper
 #include "xAODAnaHelpers/Algorithm.h"
@@ -57,44 +57,39 @@ public:
   std::string m_outputAlgo = "";
   /// @brief Write systematics names to metadata
   bool        m_writeSystToMetadata = false;
+
+  /// @brief config for JetCalibrationTool ConfigDir, set it to override tool defaults
+  std::string m_calibConfigDir = "";
   /// @brief config for JetCalibrationTool for Data
-  std::string m_calibConfigData = "JES_MC15Prerecommendation_April2015.config";
+  std::string m_calibConfigData = "JES_data2017_2016_2015_Recommendation_Aug2018_rel21.config";
   /// @brief config for JetCalibrationTool for Full Sim MC
-  std::string m_calibConfigFullSim = "JES_MC15Prerecommendation_April2015.config";
+  std::string m_calibConfigFullSim = "JES_data2017_2016_2015_Recommendation_Aug2018_rel21.config";
   /// @brief config for JetCalibrationTool for AFII MC
-  std::string m_calibConfigAFII = "JES_Prerecommendation2015_AFII_Apr2015.config";
-  /// @brief config files actually passed to JetCalibrationTool chosen from the above depending on what information stored in the input file
-  std::string m_calibConfig = "";
-  /// @brief List of calibration steps. "Insitu" added automatically if running on data
-  std::string m_calibSequence = "JetArea_Residual_Origin_EtaJES_GSC";
-  /// @brief config for JES Uncertainty Tool
-  std::string m_JESUncertConfig = "";
-  /// @brief JetUncertaintiesTool parameter
-  std::string m_JESUncertMCType = "MC15";
-  /** @rst
-    If you do not want to use SampleHandler to mark samples as AFII, this flag can be used to force run the AFII configurations.
+  std::string m_calibConfigAFII = "JES_MC16Recommendation_AFII_EMTopo_April2018_rel21.config";
+  /// @brief List of calibration steps. Auto-configured to the Jet/Etmiss recommendation if left blank.
+  std::string m_calibSequence = "";
+  /// @brief config for Jet Uncertainty Tool
+  std::string m_uncertConfig = "";
+  /// @brief MC type for Jet Uncertainty Tool
+  std::string m_uncertMCType = "";
+  /// @brief Override CalibArea tag (default recommended)
+  std::string m_overrideCalibArea = "";
+  /// @brief Override uncertainties CalibArea tag (default recommended)
+  std::string m_overrideUncertCalibArea = "";
+  /// @brief Set analysis-specific jet flavour composition file for JetUncertainties (default: unknown comp.)
+  std::string m_overrideAnalysisFile = "";
+  /// @brief Override uncertainties path (not recommended)
+  std::string m_overrideUncertPath = "";
 
-    With SampleHandler, one can define sample metadata in job steering macro. You can do this with relevant samples doing something like:
-
-    .. code-block:: c++
-
-      // access a single sample
-      Sample *sample = sh.get ("mc14_13TeV.blahblahblah");
-      sample->setMetaString("SimulationFlavour", "AFII");
-
-  @endrst */
-  bool m_setAFII = false;
-  /// @brief when running data "_Insitu" is appended to this string
-  bool m_forceInsitu = true;
+  /// @brief when running data "_Insitu" is appended to calibration sequence
+  bool m_forceInsitu = false;
+  /// @brief when running FullSim "_Smear" is appended to calibration sequence
+  bool m_forceSmear = false;
   /// @brief when using DEV mode of JetCalibTools
   bool m_jetCalibToolsDEV = false;
 
-  // @brief Config for JER Uncert Tool. If not empty the tool will run
-  std::string m_JERUncertConfig = "";
-  /// @brief Set systematic mode as Full (true) or Simple (false)
-  bool m_JERFullSys = false;
-  /// @brief Apply nominal smearing
-  bool m_JERApplyNominal = false;
+  /// @brief Run muon-to-jet ghost association (recommended for MET)
+  bool m_addGhostMuonsToJets = false;
 
   /// @brief enable to apply jet cleaning decoration
   bool m_doCleaning = true;
@@ -107,7 +102,14 @@ public:
   /// @brief Recalculate JVT using the calibrated jet pT
   bool m_redoJVT = false;
 
-  /// @brief Name of Jvt aux decoration.  Was "JvtJvfcorr" in Rel 20.7, is now "JVFCorr" in Rel 21. Leave empty to use JetMomentTools default.  This must be left empty for RootCore (r20.7) code! 
+  /// @brief Calculate fJVT using the calibrated jet pT
+  bool m_calculatefJVT = false;
+  /// @brief Maximum pT of central jets used to compute fJVT decision
+  double m_fJVTCentralMaxPt = -1;
+  /// @brief fJVT working point
+  std::string m_fJVTWorkingPoint = "Medium";
+
+  /// @brief Name of Jvt aux decoration.  Was "JvtJvfcorr" in Rel 20.7, is now "JVFCorr" in Rel 21. Leave empty to use JetMomentTools default.
   std::string m_JvtAuxName = "";
   /// @brief Sort the processed container elements by transverse momentum
   bool    m_sort = true;
@@ -119,6 +121,12 @@ public:
   /// @brief jet tile correction
   bool m_doJetTileCorr = false;
 
+  /// @brief needed in case want to treat MC as pseudoData for JER uncertainty propagation
+  bool m_pseudoData = false;
+
+  /// @brief Treat MC as usual, then run the JER uncertainties on it a second time treating it as pseudodata. Overrides m_pseudodata if true.
+  bool m_mcAndPseudoData = false;
+
 private:
   /// @brief set to true if systematics asked for and exist
   bool m_runSysts = false; //!
@@ -126,23 +134,28 @@ private:
   int m_numEvent;         //!
   int m_numObject;        //!
 
-  bool m_isMC;            //!
-  bool m_isFullSim;       //!
+  std::string m_calibConfig; //!
 
   std::vector<CP::SystematicSet> m_systList; //!
-  std::vector<int> m_systType; //!
 
   // tools
-  asg::AnaToolHandle<IJetCalibrationTool>        m_JetCalibrationTool_handle{"JetCalibrationTool"};         //!
-  asg::AnaToolHandle<ICPJetUncertaintiesTool>    m_JetUncertaintiesTool_handle{"JetUncertaintiesTool"};     //!
-  asg::AnaToolHandle<IJERTool>                   m_JERTool_handle{"JERTool"};                               //!
-  asg::AnaToolHandle<IJERSmearingTool>           m_JERSmearingTool_handle{"JERSmearingTool"};               //!
-  asg::AnaToolHandle<IJetUpdateJvt>              m_JVTUpdateTool_handle{"JetVertexTaggerTool"};             //!
-  asg::AnaToolHandle<IJetSelector>               m_JetCleaningTool_handle{"JetCleaningTool"};               //!
-  asg::AnaToolHandle<CP::IJetTileCorrectionTool> m_JetTileCorrectionTool_handle{"JetTileCorrectionTool"};   //!
+  asg::AnaToolHandle<IJetCalibrationTool>        m_JetCalibrationTool_handle   {"JetCalibrationTool"   , this}; //!
+  asg::AnaToolHandle<ICPJetUncertaintiesTool>    m_JetUncertaintiesTool_handle {"JetUncertaintiesTool" , this}; //!
+  asg::AnaToolHandle<ICPJetUncertaintiesTool>    m_pseudodataJERTool_handle    {"PseudodataJERTool"    , this}; //!
+  asg::AnaToolHandle<IJetUpdateJvt>              m_JVTUpdateTool_handle        {"JetVertexTaggerTool"  , this}; //!
+  asg::AnaToolHandle<IJetModifier>               m_fJVTTool_handle             {"JetForwardJvtTool"    , this}; //!
+  asg::AnaToolHandle<IJetSelector>               m_JetCleaningTool_handle      {"JetCleaningTool"      , this}; //!
+  asg::AnaToolHandle<CP::IJetTileCorrectionTool> m_JetTileCorrectionTool_handle{"JetTileCorrectionTool", this}; //!
+  asg::AnaToolHandle<SmoothedWZTagger>           m_SmoothedWZTagger_handle     {"SmoothedWZTagger"     , this}; //!
 
-  std::vector<asg::AnaToolHandle<IJetSelector>>  m_AllJetCleaningTool_handles;                              //!
+  std::vector<asg::AnaToolHandle<IJetSelector>>  m_AllJetCleaningTool_handles; //!
   std::vector<std::string>  m_decisionNames;    //!
+
+  // Helper functions
+  EL::StatusCode executeSystematic(const CP::SystematicSet& thisSyst, const xAOD::JetContainer* inJets,
+                                   std::pair<xAOD::JetContainer*, xAOD::ShallowAuxContainer*>& calibJetsSC,
+                                   std::vector<std::string>& vecOutContainerNames, bool isPDCopy);
+  EL::StatusCode initializeUncertaintiesTool(asg::AnaToolHandle<ICPJetUncertaintiesTool>& uncToolHandle, bool isData);
 
 public:
 

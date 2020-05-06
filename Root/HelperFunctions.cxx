@@ -3,6 +3,11 @@
 
 #include "xAODBase/IParticleContainer.h"
 
+// samples
+#include <SampleHandler/SampleGrid.h>
+#include <SampleHandler/MetaFields.h>
+#include <SampleHandler/MetaObject.h>
+
 // jet reclustering
 #include <fastjet/PseudoJet.hh>
 #include <fastjet/ClusterSequence.hh>
@@ -11,6 +16,13 @@
 #include <fastjet/tools/Filter.hh>
 #include <JetEDM/JetConstituentFiller.h>
 
+void xAH::addRucio(SH::SampleHandler& sh, const std::string& name, const std::string& dslist)
+{
+  std::unique_ptr<SH::SampleGrid> sample(new SH::SampleGrid(name));
+  sample->meta()->setString(SH::MetaFields::gridName, dslist);
+  sample->meta()->setString(SH::MetaFields::gridFilter, SH::MetaFields::gridFilter_default);
+  sh.add(sample.release());
+}
 
 MsgStream& HelperFunctions::msg( MSG::Level lvl ) {
   static MsgStream msgStream( "HelperFunctions" );
@@ -47,8 +59,13 @@ int HelperFunctions::countPrimaryVertices(const xAOD::VertexContainer* vertexCon
 
 int HelperFunctions::getPrimaryVertexLocation(const xAOD::VertexContainer* vertexContainer, MsgStream& msg)
 {
-  msg.setName(msg.name()+".getPrimaryVertexLocation");
   int location(0);
+
+  if(vertexContainer == nullptr) {
+    msg << MSG::DEBUG << "No primary vertex container was found! Returning -1" << endmsg;
+    return -1;
+  }
+
   for( auto vtx_itr : *vertexContainer )
   {
     if(vtx_itr->vertexType() == xAOD::VxType::VertexType::PriVtx) {
@@ -322,7 +339,6 @@ TLorentzVector HelperFunctions::jetTrimming(
 
 const xAOD::Vertex* HelperFunctions::getPrimaryVertex(const xAOD::VertexContainer* vertexContainer, MsgStream& msg)
 {
-  msg.setName(msg.name()+".getPrimaryVertex");
 
   // vertex types are listed on L328 of
   // https://svnweb.cern.ch/trac/atlasoff/browser/Event/xAOD/xAODTracking/trunk/xAODTracking/TrackingPrimitives.h
@@ -344,8 +360,7 @@ float HelperFunctions::getPrimaryVertexZ(const xAOD::Vertex* pvx)
   return pvx_z;
 }
 
-
-bool HelperFunctions::sort_pt(xAOD::IParticle* partA, xAOD::IParticle* partB){
+bool HelperFunctions::sort_pt(const xAOD::IParticle* partA, const xAOD::IParticle* partB){
   return partA->pt() > partB->pt();
 }
 
@@ -356,7 +371,6 @@ bool HelperFunctions::sort_pt(xAOD::IParticle* partA, xAOD::IParticle* partB){
 // prune down to 1 systematic if only request that one.  It does however include the
 // nominal case as a null SystematicSet
 std::vector< CP::SystematicSet > HelperFunctions::getListofSystematics(const CP::SystematicSet inSysts, std::string systNames, float systVal, MsgStream& msg ) {
-  msg.setName(msg.name()+".getListofSystematics");
 
   std::vector< CP::SystematicSet > outSystList;
 
@@ -477,7 +491,7 @@ void HelperFunctions::writeSystematicsListHist( const std::vector< CP::Systemati
   }
 
   if (!file->Get(folderName.c_str())) {
-    file->mkdir(folderName.c_str());  
+    file->mkdir(folderName.c_str());
   }
   file->cd(folderName.c_str());
 
@@ -501,76 +515,16 @@ float HelperFunctions::dPhi(float phi1, float phi2)
 }
 
 
-std::size_t HelperFunctions::string_pos( const std::string& inputstr, const char& occurence, int n_occurencies )
+std::size_t HelperFunctions::string_pos( const std::string& haystack, const std::string& needle, unsigned int N )
 {
-
-  std::string read("");
-  std::string cache(inputstr);
-
-  for ( int i(1); i < n_occurencies+1; ++i ) {
-    std::size_t found = cache.rfind(occurence);
-    read += cache.substr(found);
-    cache.erase(found);
-    if ( i == n_occurencies ) { return ( inputstr.size() - read.size() ) + 1; }
+  if( N == 0 ) return std::string::npos;
+  std::size_t pos, from = 0;
+  for(unsigned i=0; i<N; i++){
+    pos = haystack.find(needle, from);
+    if( pos == std::string::npos ) break;
+    from = pos + 1;
   }
-  return std::string::npos;
-}
-
-
-std::string HelperFunctions::parse_wp( const std::string& type, const std::string& config_name, MsgStream& msg )
-{
-  msg.setName(msg.name()+".parse_wp");
-
-  std::string wp("");
-
-  std::size_t init;
-  std::size_t end;
-
-  if ( type.compare("ISO") == 0 ) {
-
-    std::size_t found_iso = config_name.find("_isol");
-
-    // Return empty string if no isolation in config name
-
-    if ( found_iso == std::string::npos ) { return wp; }
-
-    init = found_iso + 5;
-    end  = config_name.find(".root");
-
-  } else if ( type.compare("ID") == 0 ) {
-
-    std::size_t found_ID = config_name.find("LLH");
-
-    // Return empty string if no LLH in config name
-
-    if ( found_ID == std::string::npos ) { return wp; }
-
-    init = string_pos( config_name, '.', 2 );
-    end  = found_ID;
-
-  } else if ( type.compare("TRIG") == 0 ) {
-
-    std::size_t found_trigger = config_name.find("trigger");
-
-    // Return empty string if no LLH in config name
-
-    if ( found_trigger == std::string::npos ) { return wp; }
-
-    init = string_pos( config_name, '.', 3 );
-    end  = string_pos( config_name, '.', 2 ) - 1;
-
-  } else {
-
-    msg << MSG::WARNING << "WP type can be either 'ISO' or 'ID'. Please check passed parameters of this function. Returning empty WP." << endmsg;
-    return wp;
-
-  }
-
-  wp = config_name.substr( init, (end - init) );
-
-  if ( type.compare("ID") == 0 ) { wp += "LLH"; }
-
-  return wp;
+  return pos;
 }
 
 bool HelperFunctions::has_exact(const std::string input, const std::string flag)
@@ -585,4 +539,25 @@ bool HelperFunctions::has_exact(const std::string input, const std::string flag)
 
 
   return inputSet.find(flag) != inputSet.end();
+}
+
+HelperFunctions::ShowerType HelperFunctions::getMCShowerType(const std::string& sample_name)
+{
+  //
+  //pre-process sample name
+  TString tmp_name(sample_name);
+  tmp_name.ReplaceAll("Py8EG","PYTHIA8EVTGEN");
+  tmp_name.ReplaceAll("Py8","Pythia8");
+  if(tmp_name.Contains("Pythia") && !tmp_name.Contains("Pythia8") && !tmp_name.Contains("EvtGen")) tmp_name.ReplaceAll("Pythia","PYTHIA8EVTGEN");
+  if(tmp_name.Contains("Pythia8") && !tmp_name.Contains("EvtGen")) tmp_name.ReplaceAll("Pythia8","PYTHIA8EVTGEN");
+  //capitalize the entire sample name
+  tmp_name.ToUpper();
+
+  //
+  // Determine shower type by looking for keywords in name
+  if(tmp_name.Contains("PYTHIA8EVTGEN")) return Pythia8;
+  else if(tmp_name.Contains("HERWIG")) return Herwig7;
+  else if(tmp_name.Contains("SHERPA_CT")) return Sherpa21;
+  else if(tmp_name.Contains("SHERPA")) return Sherpa22;
+  else return Unknown;
 }

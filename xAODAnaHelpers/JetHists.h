@@ -27,7 +27,7 @@ class JetHists : public IParticleHists
 
     using HistogramManager::book; // make other overloaded version of book() to show up in subclass
     using IParticleHists::execute; // overload
-    virtual void record(EL::Worker* wk);
+    virtual void record(EL::IWorker* wk);
 
   protected:
 
@@ -154,8 +154,8 @@ class JetHists : public IParticleHists
     TH1F* m_MV1   ; //!
     TH1F* m_MV2c00   ; //!
     TH1F* m_MV2c10   ; //!
+    TH1F* m_MV2c10_l ; //!
     TH1F* m_MV2c20   ; //!
-    TH1F* m_MV2c20_l ; //!
     TH1F* m_COMB   ; //!
     TH1F* m_SV0             ; //!
     TH1F* m_JetFitter       ; //!
@@ -171,12 +171,20 @@ class JetHists : public IParticleHists
     TProfile* m_vtxEff1_raw_vs_lBlock; //!
     TProfile* m_vtxEff10_noDummy_vs_lBlock; //!
     TProfile* m_vtxEff1_noDummy_vs_lBlock; //!
-    TProfile* m_frac_MV2c2040_vs_lBlock; //!
-    TProfile* m_frac_MV2c2050_vs_lBlock; //!
-    TProfile* m_frac_MV2c2060_vs_lBlock; //!
-    TProfile* m_frac_MV2c2070_vs_lBlock; //!
-    TProfile* m_frac_MV2c2077_vs_lBlock; //!
-    TProfile* m_frac_MV2c2085_vs_lBlock; //!
+    TProfile* m_frac_MV240_vs_actMu; //!
+    TProfile* m_frac_MV250_vs_actMu; //!
+    TProfile* m_frac_MV260_vs_actMu; //!
+    TProfile* m_frac_MV270_vs_actMu; //!
+    TProfile* m_frac_MV277_vs_actMu; //!
+    TProfile* m_frac_MV285_vs_actMu; //!
+    TProfile* m_frac_MV240_vs_lBlock; //!
+    TProfile* m_frac_MV250_vs_lBlock; //!
+    TProfile* m_frac_MV260_vs_lBlock; //!
+    TProfile* m_frac_MV270_vs_lBlock; //!
+    TProfile* m_frac_MV277_vs_lBlock; //!
+    TProfile* m_frac_MV285_vs_lBlock; //!
+
+
 
     TH1F* m_trkSum_ntrk     ; //!
     TH1F* m_trkSum_sPt      ; //!
@@ -320,6 +328,10 @@ class JetHists : public IParticleHists
     TH1F* m_vtxDiffz0_m; //!
     TH1F* m_vtxDiffz0_s; //!
 
+    TH1F* m_vtxBkgDiffz0; //!
+    TH1F* m_vtxBkgDiffz0_m; //!
+    TH1F* m_vtxBkgDiffz0_s; //!
+
     TH1F* m_vtxDiffx0; //!
     TH1F* m_vtxDiffx0_l; //!
 
@@ -359,6 +371,7 @@ class JetHists : public IParticleHists
     // charge
     //TH1F *m_charge;
 
+    TH1F* m_actualMu;                   // !
     TH1F* m_avgMu;
     TH1F* m_jetPt_avgMu_00_15;
     TH1F* m_jetPt_avgMu_15_25;

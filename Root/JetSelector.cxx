@@ -9,7 +9,7 @@
 #include <EventLoop/Worker.h>
 
 // EDM include(s):
-#include "xAODJet/JetContainer.h"
+#include <xAODJet/JetContainer.h>
 #include <xAODJet/JetAuxContainer.h>
 #include <xAODCore/AuxContainerBase.h>
 #include "xAODCore/ShallowCopy.h"
@@ -28,6 +28,7 @@
 #include "JetJvtEfficiency/JetJvtEfficiency.h"
 #include "JetMomentTools/JetForwardJvtTool.h"
 #include "xAODBTaggingEfficiency/BTaggingSelectionTool.h"
+#include "TriggerMatchingTool/MatchingTool.h"
 
 // ROOT include(s):
 #include "TFile.h"
@@ -118,10 +119,6 @@ EL::StatusCode JetSelector :: initialize ()
 
   m_event = wk()->xaodEvent();
   m_store = wk()->xaodStore();
-
-  const xAOD::EventInfo* eventInfo(nullptr);
-  ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
-  m_isMC = ( eventInfo->eventType( xAOD::EventInfo::IS_SIMULATION ) );
 
   if ( m_useCutFlow ) {
 
@@ -219,7 +216,6 @@ EL::StatusCode JetSelector :: initialize ()
   if ( m_doBTagCut ) {
 
     // initialize the BJetSelectionTool
-    setToolName(m_BJetSelectTool_handle);
     // A few which are not configurable as of yet....
     // is there a reason to have this configurable here??...I think no (GF to self)
     ANA_CHECK( m_BJetSelectTool_handle.setProperty("MaxEta",m_b_eta_max));
@@ -237,15 +233,9 @@ EL::StatusCode JetSelector :: initialize ()
 
   //init fJVT
   if (m_dofJVT) {
-    setToolName(m_fJVT_tool_handle);
-    ANA_MSG_DEBUG("Trying to initialize fJVT tool");
-    //ANA_CHECK( ASG_MAKE_ANA_TOOL(m_fJVT_tool_handle, JetForwardJvtTool));
-    ANA_CHECK(m_fJVT_tool_handle.retrieve());
-    ANA_MSG_DEBUG("Successfully initialized fJVT tool");
-
     // initialize the CP::JetJvtEfficiency Tool for fJVT
-    setToolName(m_fJVT_eff_tool_handle, "fJVT_eff_tool");
     ANA_CHECK( ASG_MAKE_ANA_TOOL(m_fJVT_eff_tool_handle, CP::JetJvtEfficiency));
+    ANA_CHECK( m_fJVT_eff_tool_handle.setProperty("WorkingPoint", m_WorkingPointfJVT ));
     ANA_CHECK( m_fJVT_eff_tool_handle.setProperty("SFFile",       m_SFFilefJVT ));
     ANA_CHECK( m_fJVT_eff_tool_handle.setProperty("ScaleFactorDecorationName", "fJVTSF"));
     ANA_CHECK( m_fJVT_eff_tool_handle.setProperty("OutputLevel",  msg().level()));
@@ -277,7 +267,6 @@ EL::StatusCode JetSelector :: initialize ()
   }
 
   // initialize the CP::JetJvtEfficiency Tool for JVT
-  setToolName(m_JVT_tool_handle, "JVT_eff_tool");
   ANA_CHECK( ASG_MAKE_ANA_TOOL(m_JVT_tool_handle, CP::JetJvtEfficiency));
   ANA_CHECK( m_JVT_tool_handle.setProperty("WorkingPoint", m_WorkingPointJVT ));
   ANA_CHECK( m_JVT_tool_handle.setProperty("SFFile",       m_SFFileJVT ));
@@ -323,6 +312,50 @@ EL::StatusCode JetSelector :: initialize ()
   m_weightNumEventPass  = 0;
   m_numObjectPass = 0;
 
+
+  // **************************************
+  //
+  // Initialise Trig::MatchingTool
+  //
+  // **************************************
+  if( !( m_singleJetTrigChains.empty() && m_diJetTrigChains.empty() ) ) {
+    // Grab the TrigDecTool from the ToolStore
+    if(!m_trigDecTool_handle.isUserConfigured()){
+      ANA_MSG_FATAL("A configured " << m_trigDecTool_handle.typeAndName() << " must have been previously created! Are you creating one in xAH::BasicEventSelection?" );
+      return EL::StatusCode::FAILURE;
+    }
+    ANA_CHECK( m_trigDecTool_handle.retrieve());
+    ANA_MSG_DEBUG("Retrieved tool: " << m_trigDecTool_handle);
+
+    //  everything went fine, let's initialise the tool!
+    ANA_CHECK( m_trigJetMatchTool_handle.setProperty( "TrigDecisionTool", m_trigDecTool_handle ));
+    ANA_CHECK( m_trigJetMatchTool_handle.setProperty("OutputLevel", msg().level() ));
+    ANA_CHECK( m_trigJetMatchTool_handle.retrieve());
+    ANA_MSG_DEBUG("Retrieved tool: " << m_trigJetMatchTool_handle);
+
+  } else {
+
+    m_doTrigMatch = false;
+
+    ANA_MSG_WARNING("***********************************************************");
+    ANA_MSG_WARNING( "Will not perform any jet trigger matching at this stage b/c :");
+    ANA_MSG_WARNING("\t -) could not find the TrigDecisionTool in asg::ToolStore");
+    ANA_MSG_WARNING("\t AND/OR");
+    ANA_MSG_WARNING("\t -) all input HLT trigger chain lists are empty");
+    ANA_MSG_WARNING("However, if you really didn't want to do the matching now, it's all good!");
+    ANA_MSG_WARNING("***********************************************************");
+  }
+
+  // Check MC cleaning option
+  if ( m_doMCCleaning && (m_mcCleaningCut < 1.0) ) {
+    ANA_MSG_WARNING("***********************************************************");
+    ANA_MSG_WARNING( "(MC-only) pileup overlay event cleaning has been set :" );
+    ANA_MSG_WARNING( "\t reconstructed jet avg(pT1,pT2) > x*(truth jet pT1), x = " << m_mcCleaningCut );
+    ANA_MSG_WARNING( "As the specified cut < 1.0 is not the intended use of this procedure, will be reset to default = 1.4!" );
+    ANA_MSG_WARNING("***********************************************************");
+    m_mcCleaningCut = 1.4;
+  }
+
   ANA_MSG_DEBUG( "JetSelector Interface succesfully initialized!" );
 
   return EL::StatusCode::SUCCESS;
@@ -356,6 +389,36 @@ EL::StatusCode JetSelector :: execute ()
 
   m_numEvent++;
 
+  // QUESTION: why this must be done in execute(), and does not work in initialize()?
+  //
+  if ( m_numEvent == 1 && m_trigDecTool_handle.isInitialized() ) {
+
+    // parse input jet trigger chain list, split by comma and fill vector
+    //
+    std::string singlejet_trig;
+    std::istringstream ss_singlejet_trig(m_singleJetTrigChains);
+
+    while ( std::getline(ss_singlejet_trig, singlejet_trig, ',') ) {
+   	m_singleJetTrigChainsList.push_back(singlejet_trig);
+    }
+
+    std::string dijet_trig;
+    std::istringstream ss_dijet_trig(m_diJetTrigChains);
+
+    while ( std::getline(ss_dijet_trig, dijet_trig, ',') ) {
+   	m_diJetTrigChainsList.push_back(dijet_trig);
+    }
+
+    ANA_MSG_INFO( "Input single jet trigger chains that will be considered for matching:\n");
+    for ( auto const &chain : m_singleJetTrigChainsList ) { ANA_MSG_INFO( "\t " << chain); }
+    ANA_MSG_INFO( "\n");
+
+    ANA_MSG_INFO( "Input di-jet trigger chains that will be considered for matching:\n");
+    for ( auto const &chain : m_diJetTrigChainsList ) { ANA_MSG_INFO( "\t " << chain); }
+    ANA_MSG_INFO( "\n");
+
+  }
+
   // did any collection pass the cuts?
   bool pass(false);
   bool count(true); // count for the 1st collection in the container - could be better as
@@ -363,7 +426,7 @@ EL::StatusCode JetSelector :: execute ()
   const xAOD::JetContainer* inJets(nullptr);
 
   const xAOD::JetContainer *truthJets = nullptr;
-  if ( m_isMC && m_doJVT ) ANA_CHECK( HelperFunctions::retrieve(truthJets, m_truthJetContainer, m_event, m_store, msg()) );
+  if ( isMC() && (m_doJVT || m_doMCCleaning ) && m_haveTruthJets) ANA_CHECK( HelperFunctions::retrieve(truthJets, m_truthJetContainer, m_event, m_store, msg()) );
 
   // if input comes from xAOD, or just running one collection,
   // then get the one collection and be done with it
@@ -373,7 +436,7 @@ EL::StatusCode JetSelector :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName, m_event, m_store, msg()) );
 
     // decorate inJets with truth info
-    if ( m_isMC && m_doJVT ) {
+    if ( isMC() && m_doJVT && m_haveTruthJets ) {
       static SG::AuxElement::Decorator<char>  isHS("isJvtHS");
       static SG::AuxElement::Decorator<char>  isPU("isJvtPU");
       for(const auto& jet : *inJets) {
@@ -388,7 +451,17 @@ EL::StatusCode JetSelector :: execute ()
       }
     }
 
-    pass = executeSelection( inJets, mcEvtWeight, count, m_inContainerName, m_outContainerName, true );
+    // Check against pile-up only jets:
+    if ( isMC() && m_doMCCleaning && m_haveTruthJets ){
+      float pTAvg = (inJets->size() > 0) ? inJets->at(0)->pt() : 0;
+      if ( inJets->size() > 1 ) pTAvg = ( inJets->at(0)->pt() + inJets->at(1)->pt() ) / 2.0;
+      if( truthJets->size() == 0 || ( pTAvg / truthJets->at(0)->pt() ) > m_mcCleaningCut ) {
+        ANA_MSG_DEBUG("Failed MC cleaning, skipping event");
+        wk()->skipEvent();
+      }
+    }
+
+    pass = executeSelection( inJets, mcEvtWeight, count, m_outContainerName, true );
 
   }  else { // get the list of systematics to run over
 
@@ -397,14 +470,24 @@ EL::StatusCode JetSelector :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames, m_inputAlgo, 0, m_store, msg()) );
 
     // loop over systematics
-    std::vector< std::string >* vecOutContainerNames = new std::vector< std::string >;
+    auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
     bool passOne(false);
+    bool passMCcleaning(true);
     for ( auto systName : *systNames ) {
 
       ANA_CHECK( HelperFunctions::retrieve(inJets, m_inContainerName+systName, m_event, m_store, msg()) );
 
+      // Check against pile-up only jets (if nominal do not pass the selection then throw the event for all systs too)
+      if ( isMC() && m_doMCCleaning && m_haveTruthJets && systName.empty() ){
+        float pTAvg = (inJets->size() > 0) ? inJets->at(0)->pt() : 0;
+        if ( inJets->size() > 1 ) pTAvg = ( inJets->at(0)->pt() + inJets->at(1)->pt() ) / 2.0;
+        if( truthJets->size() == 0 || ( pTAvg / truthJets->at(0)->pt() ) > m_mcCleaningCut ) {
+          passMCcleaning = false;
+        }
+      }
+
       // decorate inJets with truth info
-      if ( m_isMC && m_doJVT ) {
+      if ( isMC() && m_doJVT && m_haveTruthJets ) {
         static SG::AuxElement::Decorator<char>  isHS("isJvtHS");
         static SG::AuxElement::Decorator<char>  isPU("isJvtPU");
         for(const auto& jet : *inJets) {
@@ -419,7 +502,7 @@ EL::StatusCode JetSelector :: execute ()
         }
       }
 
-      passOne = executeSelection( inJets, mcEvtWeight, count, m_inContainerName+systName, m_outContainerName+systName, systName.empty() );
+      passOne = executeSelection( inJets, mcEvtWeight, count, m_outContainerName+systName, systName.empty() );
       if ( count ) { count = false; } // only count for 1 collection
       // save the string if passing the selection
       if ( passOne ) {
@@ -427,10 +510,11 @@ EL::StatusCode JetSelector :: execute ()
       }
       // the final decision - if at least one passes keep going!
       pass = pass || passOne;
+      pass = (passMCcleaning) ? pass : false; // if nominal do not pass MC cleaning then event should be skip for all systs
     }
 
     // save list of systs that should be considered down stream
-    ANA_CHECK( m_store->record( vecOutContainerNames, m_outputAlgo));
+    ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgo));
     //delete vecOutContainerNames;
 
   }
@@ -451,7 +535,6 @@ EL::StatusCode JetSelector :: execute ()
 bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
     float mcEvtWeight,
     bool count,
-    std::string inContainerName,
     std::string outContainerName,
     bool isNominal
     )
@@ -467,31 +550,14 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
   // if doing JVF or JVT get PV location
   if ( m_doJVF ) {
     const xAOD::VertexContainer* vertices(nullptr);
-    ANA_CHECK( HelperFunctions::retrieve(vertices, "PrimaryVertices", m_event, m_store, msg()) );
+    ANA_CHECK( HelperFunctions::retrieve(vertices, m_vertexContainerName, m_event, m_store, msg()) );
     m_pvLocation = HelperFunctions::getPrimaryVertexLocation( vertices, msg() );
-  }
-
-  //
-  //  Do this B/c fJVT need to modify the input container
-  //
-  const xAOD::JetContainer* jetsForSelection = inJets;
-
-  //decorate jet container with forward JVT decision
-  //That's how the tool works
-  if(m_dofJVT){
-    //have to make a deep copy because the fJVT tool wants to modify the jet containers.
-    ANA_CHECK( (HelperFunctions::makeDeepCopy<xAOD::JetContainer, xAOD::JetAuxContainer, xAOD::Jet>(m_store, inContainerName+"Copy", inJets)));
-    xAOD::JetContainer* jets_copy(nullptr);
-    ANA_CHECK( HelperFunctions::retrieve(jets_copy, inContainerName+"Copy",m_event,m_store));
-    m_fJVT_tool_handle->modify(*jets_copy);
-    //fJVT tool modifies each jet with the fJVT decision
-    jetsForSelection = jets_copy;
   }
 
   int nPass(0); int nObj(0);
   bool passEventClean(true);
 
-  static SG::AuxElement::Accessor< char > isCleanAcc("cleanJet");
+  static SG::AuxElement::Accessor< int > isCleanAcc("cleanJet");
 
   //
   // This cannot be static as multiple instance of Jet Selector would
@@ -499,8 +565,71 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
   //
   SG::AuxElement::Decorator< char > passSelDecor( m_decor );
 
-  for ( auto jet_itr : *jetsForSelection ) { // duplicated of basic loop
 
+  // identify duplicates
+  std::vector<int> badIndices;
+  badIndices.clear();
+  int i_jet = 0;
+  if(m_removeDuplicates) {
+    ANA_MSG_DEBUG("removing duplicates");
+
+    // fill pairs with jet eta and index
+    std::vector< std::pair<float, int> > etaPairs;
+    ANA_MSG_DEBUG("All jets:");
+    i_jet = 0;
+    for ( auto jet_itr : *inJets ) {
+      ANA_MSG_DEBUG( "  jet " << i_jet << ": " << jet_itr->pt() << ", " <<  jet_itr->eta() << ", " << jet_itr->phi() );
+      etaPairs.push_back( std::make_pair(jet_itr->eta(), i_jet) );
+      i_jet++;
+    }
+
+    // sort pairs by eta
+    sort(etaPairs.begin(), etaPairs.end());
+
+    bool allChecked = false;
+    if(int(etaPairs.size())<=1) allChecked = true;
+    while(!allChecked) {
+      for(int i_etaPair=1; i_etaPair < int(etaPairs.size()); i_etaPair++) { // start with second jet
+
+        // if i and i-1 have identical etas then remove i, and add the relevant index to badIndices
+        if(etaPairs[i_etaPair].first == etaPairs[i_etaPair-1].first) {
+          badIndices.push_back(etaPairs[i_etaPair].second);
+          etaPairs.erase(etaPairs.begin()+i_etaPair);
+          break;
+        }
+
+        // if made it to the end with no duplicates, then we're done
+        if(i_etaPair==int(etaPairs.size())-1)
+          allChecked = true; 
+      }
+    }
+
+    ANA_MSG_DEBUG( "duplicates removed:" );
+    i_jet = 0;
+    for ( auto jet_itr : *inJets ) {
+      if(std::find(badIndices.begin(), badIndices.end(), i_jet) != badIndices.end()) {
+        continue;
+      }
+      ANA_MSG_DEBUG( "  jet " << i_jet << ": " << jet_itr->pt() << ", " <<  jet_itr->eta() << ", " << jet_itr->phi() );
+      i_jet++;
+    }
+    if(!badIndices.empty())
+      m_count_events_with_duplicates++;
+  }
+
+  i_jet = 0;
+  for ( auto jet_itr : *inJets ) { // duplicated of basic loop
+
+    // removing of duplicates
+    if(m_removeDuplicates) {
+      if(!badIndices.empty()) {
+        if(std::find(badIndices.begin(), badIndices.end(), i_jet) != badIndices.end()) {
+          continue;
+        }
+      }
+      i_jet++;
+    }
+      
     // if only looking at a subset of jets make sure all are decorated
     if ( m_nToProcess > 0 && nObj >= m_nToProcess ) {
       if ( m_decorateSelectedObjects ) {
@@ -551,61 +680,61 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
   // Loop over selected jets and decorate with JVT efficiency SF
   // Do it only for MC
   //
-  if ( m_isMC && m_doJVT ) {
+  if ( isMC() && m_doJVT && m_haveTruthJets ) {
 
-    std::vector< std::string >* sysVariationNamesJVT  = new std::vector< std::string >;
+    auto sysVariationNamesJVT = std::make_unique< std::vector< std::string > >();
 
     // Do it only if a tool with *this* name hasn't already been used
     //
-    if ( m_JVT_tool_handle.isInitialized() ) {
+    if ( m_JVT_tool_handle.isInitialized() && !m_jvtUsedBefore) {
+      //
+      //  If SF decoration vector doesn't exist, create it (will be done only for the 1st systematic for *this* jet)
+      //
+      static const SG::AuxElement::Decorator< std::vector<float> > dec_sfJVT( m_outputSystNamesJVT );
 
+      // Create the name of the SF weight to be recorded
+      //   template:  SYSNAME_JVTEff_SF
+      //   Only need to do it once per call of executeSelection()
       for ( const auto& syst_it : m_systListJVT ) {
+	std::string sfName = "JVTEff_SF_" + m_WorkingPointJVT;
+	if ( !syst_it.name().empty() ) {
+	  std::string prepend = syst_it.name() + "_";
+	  sfName.insert( 0, prepend );
+	}
+	ANA_MSG_DEBUG("JVT SF sys name (to be recorded in xAOD::TStore) is: " << sfName);
+	sysVariationNamesJVT->push_back(sfName);
+      }
 
-        // we do not need all SF for non-nominal trees
-        if ( !syst_it.name().empty() && !isNominal )
-            continue;
+      unsigned int idx(0);
+      for ( auto jet : *(selectedJets) ) {
+	// Create Scale Factor aux for all jets
+	std::vector<float > sfVecJVT;
 
-        // Create the name of the SF weight to be recorded
-        //   template:  SYSNAME_JVTEff_SF
-        //
-        std::string sfName = "JVTEff_SF_" + m_WorkingPointJVT;
-        if ( !syst_it.name().empty() ) {
-           std::string prepend = syst_it.name() + "_";
-           sfName.insert( 0, prepend );
-        }
-        ANA_MSG_DEBUG("JVT SF sys name (to be recorded in xAOD::TStore) is: " << sfName);
-        sysVariationNamesJVT->push_back(sfName);
+	for ( const auto& syst_it : m_systListJVT ) {
+	  // we do not need all SF for non-nominal trees
+	  if ( !syst_it.name().empty() && !isNominal )
+	    continue;
 
-        // apply syst
-        //
-        if ( m_JVT_tool_handle->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
-          ANA_MSG_ERROR( "Failed to configure CP::JetJvtEfficiency for systematic " << syst_it.name());
-          return EL::StatusCode::FAILURE;
-        }
-        ANA_MSG_DEBUG("Successfully applied systematic: " << syst_it.name());
+	  // apply syst
+	  //
+	  if ( m_JVT_tool_handle->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
+	    ANA_MSG_ERROR( "Failed to configure CP::JetJvtEfficiency for systematic " << syst_it.name());
+	    return EL::StatusCode::FAILURE;
+	  }
+	  ANA_MSG_DEBUG("Successfully applied systematic: " << syst_it.name());
 
-        // and now apply JVT SF!
-        //
-        unsigned int idx(0);
-        for ( auto jet : *(selectedJets) ) {
-
+	  // and now apply JVT SF!
+	  //
           ANA_MSG_DEBUG("Applying JVT SF" );
 
           // create passed JVT decorator
           static const SG::AuxElement::Decorator<char> passedJVT( m_outputJVTPassed );
+
           if ( syst_it.name().empty() ) {
             passedJVT( *jet ) = 1; // passes by default
           }
 
           // obtain JVT SF as a float (to be stored away separately)
-          //
-          //  If SF decoration vector doesn't exist, create it (will be done only for the 1st systematic for *this* jet)
-          //
-          static const SG::AuxElement::Decorator< std::vector<float> > sfVecJVT( m_outputSystNamesJVT );
-          if ( !sfVecJVT.isAvailable( *jet ) ) {
-            sfVecJVT( *jet ) = std::vector<float>();
-          }
-
           float jvtSF(1.0);
           if ( m_JVT_tool_handle->isInRange(*jet) ) {
             // If we do not enforce JVT veto and the jet hasn't passed the JVT cut, we need to calculate the inefficiency scale factor for it
@@ -614,23 +743,20 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
                 passedJVT( *jet ) = 0; // mark as not passed
               }
               if ( m_JVT_tool_handle->getInefficiencyScaleFactor( *jet, jvtSF ) != CP::CorrectionCode::Ok ) {
-                ANA_MSG_WARNING( "Problem in JVT Tool getInefficiencyScaleFactor");
-                jvtSF = 1.0;
+                ANA_MSG_ERROR( "Error in JVT Tool getInefficiencyScaleFactor");
+                return EL::StatusCode::FAILURE;
               }
             } else { // otherwise classic efficiency scale factor
               if ( syst_it.name().empty() ) {
                 passedJVT( *jet ) = 1;
               }
               if ( m_JVT_tool_handle->getEfficiencyScaleFactor( *jet, jvtSF ) != CP::CorrectionCode::Ok ) {
-                ANA_MSG_WARNING( "Problem in JVT Tool getEfficiencyScaleFactor");
-                jvtSF = 1.0;
+                ANA_MSG_ERROR( "Error in JVT Tool getEfficiencyScaleFactor");
+                return EL::StatusCode::FAILURE;
               }
             }
           }
-          //
-          // Add it to decoration vector
-          //
-          sfVecJVT( *jet ).push_back( jvtSF );
+	  sfVecJVT.push_back(jvtSF);
 
           ANA_MSG_DEBUG( "===>>>");
           ANA_MSG_DEBUG( "Jet " << idx << ", pt = " << jet->pt()*1e-3 << " GeV, |eta| = " << std::fabs(jet->eta()) );
@@ -639,9 +765,12 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
           ANA_MSG_DEBUG( "JVT SF:");
           ANA_MSG_DEBUG( "\t " << jvtSF << " (from getEfficiencyScaleFactor())" );
           ANA_MSG_DEBUG( "--------------------------------------");
-
-          ++idx;
-        }
+	}
+	++idx;
+	//
+	// Add it to decoration vector
+	//
+	dec_sfJVT( *jet ) = sfVecJVT;
       }
     }
 
@@ -651,8 +780,8 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
     // This will be the case when this executeSelection() function gets called for every syst varied input container,
     // e.g. the different SC containers w/ calibration systematics upstream.
     //
-    if ( !m_store->contains<std::vector<std::string> >(m_outputSystNamesJVT) ) { ANA_CHECK( m_store->record( sysVariationNamesJVT, m_outputSystNamesJVT)); }
-  } else if ( !m_isMC && m_doJVT ) {
+    if ( !m_store->contains<std::vector<std::string> >(m_outputSystNamesJVT) ) { ANA_CHECK( m_store->record( std::move(sysVariationNamesJVT), m_outputSystNamesJVT)); }
+  } else if ( !isMC() && m_doJVT ) {
     // Loop over selected jets and decorate with JVT passed status
     for ( auto jet : *(selectedJets) ) {
       // create passed JVT decorator
@@ -668,27 +797,26 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
       }
     }
   }
-  
+
   // Loop over selected jets and decorate with fJVT efficiency SF
   // Do it only for MC
   //
-  if ( m_isMC && m_dofJVT ) {
+  if ( isMC() && m_dofJVT ) {
 
-    std::vector< std::string >* sysVariationNamesfJVT  = new std::vector< std::string >;
+    auto sysVariationNamesfJVT = std::make_unique< std::vector< std::string > >();
 
     // Do it only if a tool with *this* name hasn't already been used
     //
-    if ( m_fJVT_eff_tool_handle.isInitialized() ) {
+    if ( m_fJVT_eff_tool_handle.isInitialized() && !m_fjvtUsedBefore) {
+      //
+      //  If SF decoration vector doesn't exist, create it (will be done only for the 1st systematic for *this* jet)
+      //
+      static const SG::AuxElement::Decorator< std::vector<float> > dec_sffJVT( m_outputSystNamesfJVT );
 
+      // Create the name of the SF weight to be recorded
+      //   template:  SYSNAME_fJVTEff_SF
+      //   Only need to do it once per call of executeSelection()
       for ( const auto& syst_it : m_systListfJVT ) {
-
-        // we do not need all SF for non-nominal trees
-        if ( !syst_it.name().empty() && !isNominal )
-            continue;
-
-        // Create the name of the SF weight to be recorded
-        //   template:  SYSNAME_fJVTEff_SF
-        //
         std::string sfName = "fJVTEff_SF";
         if ( !syst_it.name().empty() ) {
            std::string prepend = syst_it.name() + "_";
@@ -696,34 +824,33 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
         }
         ANA_MSG_DEBUG("fJVT SF sys name (to be recorded in xAOD::TStore) is: " << sfName);
         sysVariationNamesfJVT->push_back(sfName);
+      }
 
-        // apply syst
-        //
-        if ( m_fJVT_eff_tool_handle->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
-          ANA_MSG_ERROR( "Failed to configure CP::JetJvtEfficiency for systematic " << syst_it.name());
-          return EL::StatusCode::FAILURE;
-        }
-        ANA_MSG_DEBUG("Successfully applied systematic: " << syst_it.name());
+      unsigned int idx(0);
+      for ( auto jet : *(selectedJets) ) {
+	// Create Scale Factor aux for all jets
+	std::vector<float > sfVecfJVT;
 
-        // and now apply fJVT SF!
-        //
-        unsigned int idx(0);
-        for ( auto jet : *(selectedJets) ) {
+	for ( const auto& syst_it : m_systListfJVT ) {
+	  // we do not need all SF for non-nominal trees
+	  if ( !syst_it.name().empty() && !isNominal )
+            continue;
 
+	  // apply syst
+	  //
+	  if ( m_fJVT_eff_tool_handle->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
+	    ANA_MSG_ERROR( "Failed to configure CP::JetJvtEfficiency for systematic " << syst_it.name());
+	    return EL::StatusCode::FAILURE;
+	  }
+	  ANA_MSG_DEBUG("Successfully applied systematic: " << syst_it.name());
+
+	  // and now apply fJVT SF!
+	  //
           ANA_MSG_DEBUG("Applying fJVT SF" );
-          
+
           static const SG::AuxElement::Decorator<char> passedfJVT( m_outputfJVTPassed );
           if ( syst_it.name().empty() ) {
             passedfJVT( *jet ) = jet->auxdata<char>("passFJVT");
-          }
-
-          // obtain fJVT SF as a float (to be stored away separately)
-          //
-          //  If SF decoration vector doesn't exist, create it (will be done only for the 1st systematic for *this* jet)
-          //
-          static const SG::AuxElement::Decorator< std::vector<float> > sfVecfJVT( m_outputSystNamesfJVT );
-          if ( !sfVecfJVT.isAvailable( *jet ) ) {
-            sfVecfJVT( *jet ) = std::vector<float>();
           }
 
           float fjvtSF(1.0);
@@ -731,20 +858,17 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
             // If we do not enforce JVT veto and the jet hasn't passed the JVT cut, we need to calculate the inefficiency scale factor for it
             if ( !m_dofJVTVeto && jet->auxdata<char>("passFJVT") != 1 ) {
               if ( m_fJVT_eff_tool_handle->getInefficiencyScaleFactor( *jet, fjvtSF ) != CP::CorrectionCode::Ok ) {
-                ANA_MSG_WARNING( "Problem in fJVT Tool getInefficiencyScaleFactor");
-                fjvtSF = 1.0;
+                ANA_MSG_ERROR( "Error in fJVT Tool getInefficiencyScaleFactor");
+                return EL::StatusCode::FAILURE;
               }
             } else { // otherwise classic efficiency scale factor
               if ( m_fJVT_eff_tool_handle->getEfficiencyScaleFactor( *jet, fjvtSF ) != CP::CorrectionCode::Ok ) {
-                ANA_MSG_WARNING( "Problem in fJVT Tool getEfficiencyScaleFactor");
-                fjvtSF = 1.0;
+                ANA_MSG_ERROR( "Error in fJVT Tool getEfficiencyScaleFactor");
+                return EL::StatusCode::FAILURE;
               }
             }
           }
-          //
-          // Add it to decoration vector
-          //
-          sfVecfJVT( *jet ).push_back( fjvtSF );
+          sfVecfJVT.push_back( fjvtSF );
 
           ANA_MSG_DEBUG( "===>>>");
           ANA_MSG_DEBUG( "Jet " << idx << ", pt = " << jet->pt()*1e-3 << " GeV, |eta| = " << std::fabs(jet->eta()) );
@@ -753,9 +877,12 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
           ANA_MSG_DEBUG( "fJVT SF:");
           ANA_MSG_DEBUG( "\t " << fjvtSF << " (from getEfficiencyScaleFactor())" );
           ANA_MSG_DEBUG( "--------------------------------------");
-
-          ++idx;
-        }
+	}
+	++idx;
+	//
+	// Add it to decoration vector
+	//
+	dec_sffJVT( *jet )= sfVecfJVT;
       }
     }
 
@@ -765,8 +892,8 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
     // This will be the case when this executeSelection() function gets called for every syst varied input container,
     // e.g. the different SC containers w/ calibration systematics upstream.
     //
-    if ( !m_store->contains<std::vector<std::string> >(m_outputSystNamesfJVT) ) { ANA_CHECK( m_store->record( sysVariationNamesfJVT, m_outputSystNamesfJVT)); }
-  } else if ( !m_isMC && m_dofJVT ) {
+    if ( !m_store->contains<std::vector<std::string> >(m_outputSystNamesfJVT) ) { ANA_CHECK( m_store->record( std::move(sysVariationNamesfJVT), m_outputSystNamesfJVT)); }
+  } else if ( !isMC() && m_dofJVT ) {
     // Loop over selected jets and decorate with fJVT passed status
     for ( auto jet : *(selectedJets) ) {
       // create passed fJVT decorator
@@ -804,13 +931,126 @@ bool JetSelector :: executeSelection ( const xAOD::JetContainer* inJets,
   if ( m_pass_min > 0 && nPass < m_pass_min ) {
     return false;
   }
-  if ( m_pass_max > 0 && nPass > m_pass_max ) {
+  if ( m_pass_max >= 0 && nPass > m_pass_max ) {
     return false;
   }
 
   if ( count ) {
     m_numEventPass++;
     m_weightNumEventPass += mcEvtWeight;
+  }
+
+  // Perform trigger matching on the "good" (selected) jets
+  //
+  // NB: this part will be skipped if:
+  //
+  //  1. the user didn't pass any trigger chains to the algo (see initialize(): in that case, the tool is not even initialised!)
+  //  2. there are no selected jets in the event
+  //
+  if ( m_doTrigMatch && selectedJets ) {
+
+    unsigned int nSelectedJets = selectedJets->size();
+
+    static SG::AuxElement::Decorator< std::map<std::string,char> > isTrigMatchedMapJetDecor( "isTrigMatchedMapJet" );
+
+    if ( nSelectedJets > 0 ) {
+
+      ANA_MSG_DEBUG( "Doing single jet trigger matching...");
+
+      for ( auto const &chain : m_singleJetTrigChainsList ) {
+
+        ANA_MSG_DEBUG( "\t checking trigger chain " << chain);
+
+        for ( auto const jet : *selectedJets ) {
+
+          //  For each jet, decorate w/ a map<string,char> with the 'isMatched' info associated
+          //  to each trigger chain in the input list.
+          //  If decoration map doesn't exist for this jet yet, create it (will be done only for the 1st iteration on the chain names)
+          //
+          if ( !isTrigMatchedMapJetDecor.isAvailable( *jet ) ) {
+            isTrigMatchedMapJetDecor( *jet ) = std::map<std::string,char>();
+          }
+
+          // check whether the pair is matched (NOTE: no DR is needed for jets)
+          //
+          char matched = ( m_trigJetMatchTool_handle->match( *jet, chain ) );
+
+          ANA_MSG_DEBUG( "\t\t is jet trigger matched? " << matched);
+
+          ( isTrigMatchedMapJetDecor( *jet ) )[chain] = matched;
+        }
+      }
+
+    }
+
+    // If checking dijet trigger, form jet pairs and test matching for each one.
+    // Save a:
+    //
+    // multimap< chain, pair< pair<idx_i, idx_j>, ismatched > >
+    //
+    // as *event* decoration to store which
+    // pairs are matched (to a given chain) and which aren't.
+    // A multimap is used b/c a given key (i.e., a chain) can be associated to more than one pair. This is the case for e.g., trijet events.
+    //
+    // By retrieving this map later on, user can decide what to do with the event
+    // (Generally one could just loop over the map and save a flag if there's at least one pair that matches a given chain)
+
+    if ( nSelectedJets > 1 && !m_diJetTrigChains.empty() ) {
+
+      ANA_MSG_DEBUG( "Doing di-jet trigger matching...");
+
+      const xAOD::EventInfo* eventInfo(nullptr);
+      ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
+
+      typedef std::pair< std::pair<unsigned int,unsigned int>, char> dijet_trigmatch_pair;
+      typedef std::multimap< std::string, dijet_trigmatch_pair >    dijet_trigmatch_pair_map;
+      static SG::AuxElement::Decorator< dijet_trigmatch_pair_map >  diJetTrigMatchPairMapDecor( "diJetTrigMatchPairMap" );
+
+      for ( auto const &chain : m_diJetTrigChainsList ) {
+
+      	ANA_MSG_DEBUG( "\t checking trigger chain " << chain);
+
+      	//  If decoration map doesn't exist for this event yet, create it (will be done only for the 1st iteration on the chain names)
+      	//
+      	if ( !diJetTrigMatchPairMapDecor.isAvailable( *eventInfo ) ) {
+          diJetTrigMatchPairMapDecor( *eventInfo ) = dijet_trigmatch_pair_map();
+      	}
+
+      	std::vector<const xAOD::IParticle*> myJets;
+
+      	for ( unsigned int imu = 0; imu < selectedJets->size()-1; ++imu ) {
+
+      	  for ( unsigned int jmu = imu+1; jmu < selectedJets->size(); ++jmu ) {
+
+            // test a new pair
+            //
+      	    myJets.clear();
+      	    myJets.push_back( selectedJets->at(imu) );
+      	    myJets.push_back( selectedJets->at(jmu) );
+
+            // check whether the pair is matched (NOTE: no DR is needed for jets)
+            //
+      	    char matched = m_trigJetMatchTool_handle->match( myJets, chain );
+
+      	    ANA_MSG_DEBUG( "\t\t is the jet pair ("<<imu<<","<<jmu<<") trigger matched? " << matched);
+
+            // set basic matching information
+            ( isTrigMatchedMapJetDecor( *myJets[0] ) )[chain] = matched;
+            ( isTrigMatchedMapJetDecor( *myJets[1] ) )[chain] = matched;
+
+            // set pair decision information
+      	    std::pair <unsigned int, unsigned int>  chain_idxs = std::make_pair(imu,jmu);
+            dijet_trigmatch_pair  chain_decision = std::make_pair(chain_idxs,matched);
+            diJetTrigMatchPairMapDecor( *eventInfo ).insert( std::pair< std::string, dijet_trigmatch_pair >(chain,chain_decision) );
+
+      	  }
+      	}
+      } //for m_diJetTrigChainsList
+    } //if nSelectedJets > 1 && !m_diJetTrigChains.empty()
+  } //if m_doTrigMatch && selectedJets
+
+  if(m_sort) {
+    std::sort( selectedJets->begin(), selectedJets->end(), HelperFunctions::sort_pt );
   }
 
   ANA_MSG_DEBUG("leave executeSelection... ");
@@ -851,6 +1091,10 @@ EL::StatusCode JetSelector :: finalize ()
     m_cutflowHistW->SetBinContent( m_cutflow_bin, m_weightNumEventPass  );
   }
 
+  if(m_removeDuplicates) {
+    ANA_MSG_INFO("removed duplicate " << m_inContainerName << " from " << m_count_events_with_duplicates << " events");
+  }
+
   return EL::StatusCode::SUCCESS;
 }
 
@@ -877,26 +1121,51 @@ EL::StatusCode JetSelector :: histFinalize ()
 int JetSelector :: PassCuts( const xAOD::Jet* jet ) {
   ANA_MSG_DEBUG("In pass cuts");
 
+  double jetPt       = 0;
+  double jetEta      = 0;
+  double jetPhi      = 0;
+  double jetM        = 0;
+  double jetRapidity = 0;
+  if(m_jetScale4Selection=="Final"){ // default
+    jetPt       = jet->pt();
+    jetEta      = jet->eta();
+    jetPhi      = jet->phi();
+    jetM        = jet->m();
+    jetRapidity = jet->rapidity();
+  } else { // retrieve chosen jet momentum scale
+    xAOD::JetFourMom_t tmp;
+    if(!jet->getAttribute<xAOD::JetFourMom_t>(m_jetScale4Selection.c_str(),tmp)){
+      ATH_MSG_ERROR("Jet does not have the requested momentum state: " << m_jetScale4Selection);
+      return 0;
+    } else {
+      jetPt       = jet->jetP4(m_jetScale4Selection.c_str()).Pt();
+      jetEta      = jet->jetP4(m_jetScale4Selection.c_str()).Eta();
+      jetPhi      = jet->jetP4(m_jetScale4Selection.c_str()).Phi();
+      jetM        = jet->jetP4(m_jetScale4Selection.c_str()).M();
+      jetRapidity = jet->jetP4(m_jetScale4Selection.c_str()).Rapidity();
+    }
+  }
+
   // fill cutflow bin 'all' before any cut
   if(m_useCutFlow) m_jet_cutflowHist_1->Fill( m_jet_cutflow_all, 1 );
 
   // pT
   if ( m_pT_max != 1e8 ) {
-    if ( jet->pt() > m_pT_max ) { return 0; }
+    if ( jetPt > m_pT_max ) { return 0; }
   }
   if(m_useCutFlow) m_jet_cutflowHist_1->Fill( m_jet_cutflow_ptmax_cut, 1 );
 
   if ( m_pT_min != 1e8 ) {
-    if ( jet->pt() < m_pT_min ) { return 0; }
+    if ( jetPt < m_pT_min ) { return 0; }
   }
   if(m_useCutFlow) m_jet_cutflowHist_1->Fill( m_jet_cutflow_ptmin_cut, 1 );
 
   // eta
   if ( m_eta_max != 1e8 ) {
-    if ( fabs(jet->eta()) > m_eta_max ) { return 0; }
+    if ( fabs(jetEta) > m_eta_max ) { return 0; }
   }
   if ( m_eta_min != 1e8 ) {
-    if ( fabs(jet->eta()) < m_eta_min ) { return 0; }
+    if ( fabs(jetEta) < m_eta_min ) { return 0; }
   }
   if(m_useCutFlow) m_jet_cutflowHist_1->Fill( m_jet_cutflow_eta_cut, 1 );
 
@@ -910,27 +1179,29 @@ int JetSelector :: PassCuts( const xAOD::Jet* jet ) {
 
   // mass
   if ( m_mass_max != 1e8 ) {
-    if ( jet->m() > m_mass_max ) { return 0; }
+    if ( jetM > m_mass_max ) { return 0; }
   }
   if ( m_mass_min != 1e8 ) {
-    if ( jet->m() < m_mass_min ) { return 0; }
+    if ( jetM < m_mass_min ) { return 0; }
   }
 
   // rapidity
   if ( m_rapidity_max != 1e8 ) {
-    if ( jet->rapidity() > m_rapidity_max ) { return 0; }
+    if ( jetRapidity > m_rapidity_max ) { return 0; }
   }
   if ( m_rapidity_min != 1e8 ) {
-    if ( jet->rapidity() < m_rapidity_min ) { return 0; }
+    if ( jetRapidity < m_rapidity_min ) { return 0; }
   }
 
   // JVF pileup cut
   if ( m_doJVF ){
     ANA_MSG_DEBUG("Doing JVF");
-    ANA_MSG_DEBUG("Jet Pt " << jet->pt());
-    if ( jet->pt() < m_pt_max_JVF ) {
+    ANA_MSG_DEBUG("Jet Pt " << jetPt);
+    if ( jetPt < m_pt_max_JVF ) {
       xAOD::JetFourMom_t jetScaleP4 = jet->getAttribute< xAOD::JetFourMom_t >( m_jetScaleType.c_str() );
       if ( fabs(jetScaleP4.eta()) < m_eta_max_JVF ){
+        if ( m_pvLocation < 0 )
+          return 0;
         if ( jet->getAttribute< std::vector<float> >( "JVF" ).at( m_pvLocation ) < m_JVFCut ) {
           return 0;
         }
@@ -940,44 +1211,42 @@ int JetSelector :: PassCuts( const xAOD::Jet* jet ) {
 
   if(m_dofJVT){
     if(jet->auxdata<char>("passFJVT")!=1){
-      ANA_MSG_DEBUG("jet pt = "<<jet->pt()<<",eta = "<<jet->eta()<<",phi = "<<jet->phi());
+      ANA_MSG_DEBUG("jet pt = "<<jetPt<<",eta = "<<jetEta<<",phi = "<<jetPhi);
       ANA_MSG_DEBUG("Failed forward JVT");
       if(m_dofJVTVeto)return 0;
     }
     else if (TMath::Abs(jet->eta()>2.5) ) {
-      ANA_MSG_DEBUG("jet pt = " << jet->pt() << ",eta = "<<jet->eta()<<",phi = "<<jet->phi());
+      ANA_MSG_DEBUG("jet pt = " << jetPt << ",eta = "<<jetEta<<",phi = "<<jetPhi);
       ANA_MSG_DEBUG("Passed forward JVT");
     }
 
   }//do forward JVT
 
   // JVT pileup cut
-  //
   if ( m_doJVT ) {
-    ANA_MSG_DEBUG("Checking JVT cut...");
-    if ( m_JVTCut > 0 && jet->getAttribute< float >( "Jvt" ) < m_JVTCut ) { ANA_MSG_DEBUG( " pt/eta = "<<jet->pt()<<"/" << jet->eta() ); }
+    // NB: origin-correction is applied at constituent level. Eta for Jvt needs to be the DetectorEta explicitly.
+    float jet_eta = jet->getAttribute<float>("DetectorEta");
+    float jet_jvt = jet->getAttribute<float>("Jvt");
+    ANA_MSG_DEBUG("Checking Jvt cut for jet pT=" << jetPt << " MeV, DetectorEta=" << jet_eta <<", and Jvt="<< jet_jvt );
+    bool result = false;
 
-    // Old usage: check manually whether this jet passes JVT cut
-    //
-    if ( m_JVTCut > 0 ) {
-      if ( jet->pt() < m_pt_max_JVT ) {
-        ANA_MSG_DEBUG("Pass JVT-pT Cut");
-        xAOD::JetFourMom_t jetScaleP4 = jet->getAttribute< xAOD::JetFourMom_t >( m_jetScaleType.c_str() );
-        if ( fabs(jetScaleP4.eta()) < m_eta_max_JVT ){
-          ANA_MSG_DEBUG(" Pass JVT-Eta Cut " );
-          ANA_MSG_DEBUG(" JVT = " << jet->getAttribute< float >( "Jvt" ) );
-          if ( jet->getAttribute< float >( "Jvt" ) < m_JVTCut ) {
-            ANA_MSG_DEBUG(" upper JVTCut is " << m_JVTCut << " - cutting this jet!!" );
-            return 0;
-          } else {
-            ANA_MSG_DEBUG(" upper JVTCut is " << m_JVTCut << " - jet passes JVT ");
-          }
-        }
+    // if non-negative, the user wants to apply a custom jvt cut
+    if( m_JVTCut > 0 ){
+      ANA_MSG_DEBUG("Custom JVT working point with pT<" << m_pt_max_JVT << ", |eta|<" << m_eta_max_JVT << ", Jvt<" << m_JVTCut);
+      // JVT should only be applied at low pt and central eta. If outside this, result = true.
+      if (jetPt < m_pt_max_JVT && std::fabs(jet_eta) < m_eta_max_JVT) {
+        result = (jet_jvt > m_JVTCut);
+      } else {
+        result = true;
       }
     } else {
-      if ( !m_noJVTVeto && !m_JVT_tool_handle->passesJvtCut(*jet) ) { return 0; }
+      result = m_JVT_tool_handle->passesJvtCut(*jet);
     }
-  } // m_doJVT
+
+    if(result) ANA_MSG_DEBUG(" ... jet passes Jvt cut");
+    else       ANA_MSG_DEBUG(" ... jet does not pass Jvt cut");
+    if ( !m_noJVTVeto && !result ) return 0;
+  }
   if ( m_useCutFlow ) m_jet_cutflowHist_1->Fill( m_jet_cutflow_jvt_cut, 1 );
 
   //
@@ -1000,6 +1269,14 @@ int JetSelector :: PassCuts( const xAOD::Jet* jet ) {
     const xAOD::BTagging *btag_info = jet->auxdata< const xAOD::BTagging* >("HLTBTag");
 
     double tagValue = -99;
+    if(m_HLTBTagTaggerName=="MV2c00"){
+      btag_info->MVx_discriminant("MV2c00", tagValue);
+    }
+
+    if(m_HLTBTagTaggerName=="MV2c10"){
+      btag_info->MVx_discriminant("MV2c10", tagValue);
+    }
+
     if(m_HLTBTagTaggerName=="MV2c20"){
       btag_info->MVx_discriminant("MV2c20", tagValue);
     }

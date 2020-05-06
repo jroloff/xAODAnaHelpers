@@ -1,14 +1,13 @@
 #ifndef xAODAnaHelpers_MuonCalibrator_H
 #define xAODAnaHelpers_MuonCalibrator_H
 
-#include "MuonMomentumCorrections/MuonCalibrationAndSmearingTool.h"
-
 // algorithm wrapper
 #include "xAODAnaHelpers/Algorithm.h"
 
 // external tools include(s):
-#include "AsgTools/AnaToolHandle.h"
-#include "PileupReweighting/PileupReweightingTool.h"
+#include <AsgTools/AnaToolHandle.h>
+#include <AsgAnalysisInterfaces/IPileupReweightingTool.h>
+#include <MuonAnalysisInterfaces/IMuonCalibrationAndSmearingTool.h>
 
 class MuonCalibrator : public xAH::Algorithm
 {
@@ -20,16 +19,41 @@ public:
   std::string m_inContainerName = "";
   std::string m_outContainerName = "";
 
-  std::string m_release = "";
-  /// @brief comma-separated list of years
-  std::string m_Years = "Data16,Data15";
+  /// @brief Recommendations release (not recommended to change)
+  std::string m_overrideRelease = "";
+  /// @brief Recommendations saggita release for 2015 & 2016 (not recommended to change)
+  std::string m_overrideSagittaRelease1516 = "";
+  /// @brief Recommendations saggita release for 2017 (not recommended to change)
+  std::string m_overrideSagittaRelease17 = "";
+  /// @brief Recommendations saggita release for 2018 (not recommended to change)
+  std::string m_overrideSagittaRelease18 = "";
+  /// @brief Set StatComb1516 property if different than -1
+  int m_statComb1516 = -1;
+  /// @brief Set StatComb17 property if different than -1
+  int m_statComb17 = -1;
+  /// @brief Set StatComb18 property if different than -1
+  int m_statComb18 = -1;
+  /// @brief Set SagittaCorr1516 property if different than -1
+  int m_sagittaCorr1516 = -1;
+  /// @brief Set SagittaCorr17 property if different than -1
+  int m_sagittaCorr17 = -1;
+  /// @brief Set SagittaCorr18 property if different than -1
+  int m_sagittaCorr18 = -1;
+  /// @brief Set doSagittaMCDistortion1516 property if different than -1
+  int m_doSagittaMCDistortion1516 = -1;
+  /// @brief Set doSagittaMCDistortion17 property if different than -1
+  int m_doSagittaMCDistortion17 = -1;
+  /// @brief Set doSagittaMCDistortion18 property if different than -1
+  int m_doSagittaMCDistortion18 = -1;
+  /// @brief Set SagittaCorrPhaseSpace1516 property if different than -1
+  int m_sagittaCorrPhaseSpace1516 = -1;
+  /// @brief Set SagittaCorrPhaseSpace17 property if different than -1
+  int m_sagittaCorrPhaseSpace17 = -1;
+  /// @brief Set SagittaCorrPhaseSpace18 property if different than -1
+  int m_sagittaCorrPhaseSpace18 = -1;
 
   // sort after calibration
-  bool    m_sort = true;
-
-  bool         m_do_sagittaCorr = true;
-  std::string  m_sagittaRelease = "sagittaBiasDataAll_06_02_17";
-  bool         m_do_sagittaMCDistortion = false;
+  bool m_sort = true;
 
   // systematics
   /// @brief this is the name of the vector of names of the systematically varied containers produced by the upstream algo (e.g., the SC containers with calibration systematics)
@@ -44,7 +68,7 @@ public:
 
   /**
       @rst
-          Force ``MuonCalibrationAndSmearingTool`` to calibrate data.
+          Force ``MuonCalibrationPeriodTool.h`` to calibrate data.
 
           ``MuonSelectorTool`` depends on a specific decoration existing on Muons, namely ``MuonSpectrometerPt``. This is decorated by the ``MuonCalibrationAndSmearingTool``. However, you do not calibrate data by default so this tool would not be run on data.
 
@@ -59,8 +83,6 @@ private:
   int m_numEvent;         //!
   int m_numObject;        //!
 
-  bool m_isMC;            //!
-
   std::string m_outAuxContainerName;
   std::string m_outSCContainerName;
   std::string m_outSCAuxContainerName;
@@ -68,10 +90,7 @@ private:
   std::vector<CP::SystematicSet> m_systList; //!
 
   // tools
-  asg::AnaToolHandle<CP::IPileupReweightingTool> m_pileup_tool_handle{"CP::PileupReweightingTool"}; //!
-  std::map<std::string, CP::MuonCalibrationAndSmearingTool*>  m_muonCalibrationAndSmearingTools;    //!
-  std::map<std::string, std::string> m_muonCalibrationAndSmearingTool_names;                        //!
-  std::vector<std::string> m_YearsList;                                                             //!
+  asg::AnaToolHandle<CP::IMuonCalibrationAndSmearingTool> m_muonCalibrationTool_handle{"CP::MuonCalibrationPeriodTool/MuonCalibrationAndSmearingTool", this}; //!
 
   // variables that don't get filled at submission time should be
   // protected from being send from the submission node to the worker

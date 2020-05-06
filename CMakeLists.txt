@@ -6,8 +6,12 @@
 atlas_subdir( xAODAnaHelpers )
 
 set( release_libs xAODTriggerCnvLib )
-if( ${AnalysisBase_VERSION} VERSION_GREATER 21.0 )
+
+if( AnalysisBase_VERSION AND AnalysisBase_VERSION VERSION_GREATER 21.0 )
   # 21.X
+  set( release_libs xAODTriggerCnvLib )
+elseif( AnalysisTop_VERSION AND AnalysisTop_VERSION VERSION_GREATER 21.0 )
+  # AnalysisTop 21.X
   set( release_libs xAODTriggerCnvLib )
 else()
   # 2.6.X
@@ -51,10 +55,11 @@ atlas_depends_on_subdirs( PUBLIC
                           PhysicsAnalysis/ElectronPhotonID/ElectronPhotonShowerShapeFudgeTool
                           PhysicsAnalysis/ElectronPhotonID/PhotonEfficiencyCorrection
                           PhysicsAnalysis/JetMissingEtID/JetSelectorTools
-                          PhysicsAnalysis/JetTagging/JetTagPerformanceCalibration/xAODBTaggingEfficiency
+                          PhysicsAnalysis/Interfaces/FTagAnalysisInterfaces
+                          PhysicsAnalysis/Interfaces/JetAnalysisInterfaces
+                          PhysicsAnalysis/Interfaces/MuonAnalysisInterfaces
                           PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonMomentumCorrections
                           PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonEfficiencyCorrections
-                          PhysicsAnalysis/MuonID/MuonSelectorTools
                           PhysicsAnalysis/TauID/TauAnalysisTools
                           Reconstruction/Jet/JetAnalysisTools/JetTileCorrection
                           Reconstruction/Jet/JetCalibTools
@@ -63,11 +68,13 @@ atlas_depends_on_subdirs( PUBLIC
                           Reconstruction/Jet/JetResolution
                           Reconstruction/Jet/JetSubStructureUtils
                           Reconstruction/Jet/JetUncertainties
+                          Reconstruction/MET/METInterface
                           Reconstruction/MET/METUtilities
                           Tools/PathResolver
                           Trigger/TrigAnalysis/TrigDecisionTool
                           Trigger/TrigAnalysis/TriggerMatchingTool
                           Trigger/TrigConfiguration/TrigConfxAOD
+                          ${release_depends}
 )
 
 # Find the needed external(s):
@@ -93,13 +100,14 @@ atlas_add_library( xAODAnaHelpersLib xAODAnaHelpers/*.h Root/*.h Root/*.cxx ${xA
                    ElectronEfficiencyCorrectionLib ElectronPhotonSelectorToolsLib
                    IsolationSelectionLib IsolationCorrectionsLib
                    ElectronPhotonShowerShapeFudgeToolLib
+                   FTagAnalysisInterfacesLib JetAnalysisInterfacesLib MuonAnalysisInterfacesLib
                    PhotonEfficiencyCorrectionLib METUtilitiesLib METInterface
                    TauAnalysisToolsLib AsgTools xAODMissingET JetResolutionLib
                    AssociationUtilsLib JetEDM JetUncertaintiesLib
                    JetCPInterfaces xAODBTaggingEfficiencyLib TrigConfxAODLib
                    TrigDecisionToolLib xAODCutFlow JetMomentToolsLib
                    TriggerMatchingToolLib xAODMetaDataCnv xAODMetaData
-                   JetJvtEfficiencyLib PMGToolsLib JetSubStructureUtils JetTileCorrectionLib
+                   JetJvtEfficiencyLib PMGToolsLib JetSubStructureUtils JetTileCorrectionLib BoostedJetTaggersLib
                    ${release_libs}
 )
 
@@ -107,3 +115,22 @@ atlas_add_library( xAODAnaHelpersLib xAODAnaHelpers/*.h Root/*.h Root/*.cxx ${xA
 atlas_install_python_modules( python/*.py )
 atlas_install_scripts( scripts/*.py )
 atlas_install_data( data/* )
+
+
+### Install python packages
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include(SetupPythonPackage)
+
+# Install argcomplete:
+setup_python_package( argcomplete
+   "https://pypi.python.org/packages/3b/db/c524f0d72842b44b179cc50d4257f1e72f447fef0919556e8b28a9b0f80f/argcomplete-1.9.2.tar.gz"
+   "13243e0b88102f13f7537f5aa70a48c0"
+   PATCH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch-setup.cfg setup.cfg
+)
+
+add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/xAH_env_copied
+                   COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/cmake/setup.sh >> ${CMAKE_BINARY_DIR}/${ATLAS_PLATFORM}/setup.sh
+                   COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/xAH_env_copied
+)
+add_custom_target(Setup_xAH_Environment ALL DEPENDS ${CMAKE_BINARY_DIR}/xAH_env_copied)
+execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/xAH_env_copied)

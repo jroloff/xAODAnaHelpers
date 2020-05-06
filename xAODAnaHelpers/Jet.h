@@ -10,10 +10,22 @@ namespace xAH {
   class Jet : public Particle
     {
     public:
-      
-      Jet();
+      enum BTaggerOP {
+	None,
+	DL1_FixedCutBEff_60   , DL1_FixedCutBEff_70   , DL1_FixedCutBEff_77   , DL1_FixedCutBEff_85   ,
+	DL1r_FixedCutBEff_60  , DL1r_FixedCutBEff_70  , DL1r_FixedCutBEff_77  , DL1r_FixedCutBEff_85  ,
+        DL1rmu_FixedCutBEff_60, DL1rmu_FixedCutBEff_70, DL1rmu_FixedCutBEff_77, DL1rmu_FixedCutBEff_85,
+	MV2c10_FixedCutBEff_60, MV2c10_FixedCutBEff_70, MV2c10_FixedCutBEff_77, MV2c10_FixedCutBEff_85,
+	MV2c10_Continuous, DL1_Continuous, DL1r_Continuous, DL1rmu_Continuous // Continuous
+      };
+
       float rapidity;
 
+      // trigger
+      int               isTrigMatched;
+      std::vector<int>  isTrigMatchedToChain;
+      std::string       listTrigChains;
+      
       // clean
       float Timing;
       float LArQuality;
@@ -31,6 +43,8 @@ namespace xAH {
       float LeadingClusterCenterLambda;
       float LeadingClusterSecondR;
       int   clean_passLooseBad;
+      int   clean_passLooseBadTrigger;
+      int   clean_passLooseBadTriggerUgly;
       int   clean_passLooseBadUgly;
       int   clean_passTightBad;
       int   clean_passTightBadUgly;
@@ -71,10 +85,34 @@ namespace xAH {
       float MV1;
       float MV2c00;
       float MV2c10;
+      float MV2c10mu;
+      float MV2c10rnn;
+      float MV2rmu;
+      float MV2r;
       float MV2c20;
       float MV2c100;
-      float MV2;
+      float DL1;
+      float DL1_pu;
+      float DL1_pc;
+      float DL1_pb;
+      float DL1mu;
+      float DL1mu_pu;
+      float DL1mu_pc;
+      float DL1mu_pb;
+      float DL1rnn;
+      float DL1rnn_pu;
+      float DL1rnn_pc;
+      float DL1rnn_pb;
+      float DL1rmu;
+      float DL1rmu_pu;
+      float DL1rmu_pc;
+      float DL1rmu_pb;
+      float DL1r;
+      float DL1r_pu;
+      float DL1r_pc;
+      float DL1r_pb;
       int  HadronConeExclTruthLabelID;
+      int  HadronConeExclExtendedTruthLabelID;
 
       float vtxOnlineValid;
       float vtxHadDummy;
@@ -90,6 +128,10 @@ namespace xAH {
       float vtx_online_x0;
       float vtx_online_y0;
       float vtx_online_z0;
+
+      float vtx_online_bkg_x0;
+      float vtx_online_bkg_y0;
+      float vtx_online_bkg_z0;
     
       float JetFitter_nVTX           ;
       float JetFitter_nSingleTracks  ;
@@ -155,51 +197,58 @@ namespace xAH {
       std::vector<float> IP3D_weightCofTracks    ;
       std::vector<float> IP3D_weightUofTracks    ;
 
-      int MV2c20_isFix30;
-      std::vector<float> MV2c20_sfFix30;
-    
-      int MV2c20_isFix50;
-      std::vector<float> MV2c20_sfFix50;
-    
-      int MV2c20_isFix60;
-      std::vector<float> MV2c20_sfFix60;
-    
-      int MV2c20_isFix70;
-      std::vector<float> MV2c20_sfFix70;
-    
-      int MV2c20_isFix77;
-      std::vector<float> MV2c20_sfFix77;
-    
-      int MV2c20_isFix80;
-      std::vector<float> MV2c20_sfFix80;
-    
-      int MV2c20_isFix85;
-      std::vector<float> MV2c20_sfFix85;
-    
-      int MV2c20_isFix90;
-      std::vector<float> MV2c20_sfFix90;
-    
-      int MV2c20_isFlt30;
-      std::vector<float> MV2c20_sfFlt30;
-    
-      int MV2c20_isFlt40;
-      std::vector<float> MV2c20_sfFlt40;
-    
-      int MV2c20_isFlt50;
-      std::vector<float> MV2c20_sfFlt50;
-    
-      int MV2c20_isFlt60;
-      std::vector<float> MV2c20_sfFlt60;
-    
-      int MV2c20_isFlt70;
-      std::vector<float> MV2c20_sfFlt70;
-    
-      int MV2c20_isFlt77;
-      std::vector<float> MV2c20_sfFlt77;
-    
-      int MV2c20_isFlt85;
-      std::vector<float> MV2c20_sfFlt85;
-    
+      // jetBTag
+      int is_DL1_FixedCutBEff_60;
+      std::vector<float> SF_DL1_FixedCutBEff_60;
+      int is_DL1_FixedCutBEff_70;
+      std::vector<float> SF_DL1_FixedCutBEff_70;
+      int is_DL1_FixedCutBEff_77;
+      std::vector<float> SF_DL1_FixedCutBEff_77;
+      int is_DL1_FixedCutBEff_85;
+      std::vector<float> SF_DL1_FixedCutBEff_85;
+      
+      int is_DL1r_FixedCutBEff_60;
+      std::vector<float> SF_DL1r_FixedCutBEff_60;
+      int is_DL1r_FixedCutBEff_70;
+      std::vector<float> SF_DL1r_FixedCutBEff_70;
+      int is_DL1r_FixedCutBEff_77;
+      std::vector<float> SF_DL1r_FixedCutBEff_77;
+      int is_DL1r_FixedCutBEff_85;
+      std::vector<float> SF_DL1r_FixedCutBEff_85;
+
+      int is_DL1rmu_FixedCutBEff_60;
+      std::vector<float> SF_DL1rmu_FixedCutBEff_60;
+      int is_DL1rmu_FixedCutBEff_70;
+      std::vector<float> SF_DL1rmu_FixedCutBEff_70;
+      int is_DL1rmu_FixedCutBEff_77;
+      std::vector<float> SF_DL1rmu_FixedCutBEff_77;
+      int is_DL1rmu_FixedCutBEff_85;
+      std::vector<float> SF_DL1rmu_FixedCutBEff_85;
+
+      int is_MV2c10_FixedCutBEff_60;
+      std::vector<float> SF_MV2c10_FixedCutBEff_60;
+      int is_MV2c10_FixedCutBEff_70;
+      std::vector<float> SF_MV2c10_FixedCutBEff_70;
+      int is_MV2c10_FixedCutBEff_77;
+      std::vector<float> SF_MV2c10_FixedCutBEff_77;
+      int is_MV2c10_FixedCutBEff_85;
+      std::vector<float> SF_MV2c10_FixedCutBEff_85;
+
+      // Continuous
+      int is_MV2c10_Continuous;
+      std::vector<float> SF_MV2c10_Continuous;
+      std::vector<float> inEffSF_MV2c10_Continuous;
+      int is_DL1_Continuous;
+      std::vector<float> SF_DL1_Continuous;
+      std::vector<float> inEffSF_DL1_Continuous;
+      int is_DL1r_Continuous;
+      std::vector<float> SF_DL1r_Continuous;
+      std::vector<float> inEffSF_DL1r_Continuous;
+      int is_DL1rmu_Continuous;
+      std::vector<float> SF_DL1rmu_Continuous;
+      std::vector<float> inEffSF_DL1rmu_Continuous;
+
+
       // truth
       int   ConeTruthLabelID;
       int   TruthCount;
@@ -213,10 +262,15 @@ namespace xAH {
       // charge
       double charge;
 
-      const Muon* matchedMuon;
-      const Jet * matchedJet;
+      // passSel
+      char passSel;
+
+      const Muon* matchedMuon =nullptr; //!
+      const Jet * matchedJet  =nullptr; //!
 
     public:
+      int is_btag(BTaggerOP op) const;
+      const std::vector<float>& SF_btag(BTaggerOP op) const;
 
       void muonInJetCorrection(const xAH::MuonContainer* muons);
 

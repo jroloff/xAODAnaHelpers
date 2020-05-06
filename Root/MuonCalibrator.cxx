@@ -120,88 +120,83 @@ EL::StatusCode MuonCalibrator :: initialize ()
     return EL::StatusCode::FAILURE;
   }
 
-
-  // Check if is MC
-  //
-  const xAOD::EventInfo* eventInfo(nullptr);
-  ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
-  m_isMC = eventInfo->eventType( xAOD::EventInfo::IS_SIMULATION );
-
-  // Create a ToolHandle of the PRW tool which is used for the random generation
-  // of run numbers. Depending on the outcome a specific initialization of the tool
-  // will be used.
-  //
-  if( m_isMC ){
-    if(!setToolName(m_pileup_tool_handle, "Pileup")){
-      ANA_MSG_FATAL("A configured " << m_pileup_tool_handle.typeAndName() << " must have been previously created! Are you creating one in xAH::BasicEventSelection?" );
-      return EL::StatusCode::FAILURE;
-    }
-    ANA_CHECK( m_pileup_tool_handle.retrieve());
-    ANA_MSG_DEBUG("Retrieved tool: " << m_pileup_tool_handle);
-  }
-
   m_numEvent      = 0;
   m_numObject     = 0;
 
-  std::string tmp_years = m_Years;
-
-  // Parse all comma seperated years
-  //
-  while ( tmp_years.size() > 0) {
-    size_t pos = tmp_years.find_first_of(',');
-    if ( pos == std::string::npos ) {
-      pos = tmp_years.size();
-      m_YearsList.push_back(tmp_years.substr(0, pos));
-      tmp_years.erase(0, pos);
-    } else {
-      m_YearsList.push_back(tmp_years.substr(0, pos));
-      tmp_years.erase(0, pos+1);
-    }
+  // Initialize the CP::MuonCalibrationPeriodTool
+  if ( m_statComb1516 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration StatComb1516 property to " << m_statComb1516);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("StatComb1516", static_cast<bool>(m_statComb1516)));
   }
-
-  // Initialize vector of names
-  //
-  for(auto yr : m_YearsList) {
-    m_muonCalibrationAndSmearingTool_names[yr] = "MuonCalibrationAndSmearingTool_" + yr;
+  if ( m_statComb17 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration StatComb1516 property to " << m_statComb17);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("StatComb17", static_cast<bool>(m_statComb17)));
   }
-
-  // Initialize the CP::MuonCalibrationAndSmearingTool
-  //
-  for(auto yr : m_YearsList) {
-    ANA_CHECK( checkToolStore<CP::MuonCalibrationAndSmearingTool>(m_muonCalibrationAndSmearingTool_names[yr]));
-
-    if ( asg::ToolStore::contains<CP::MuonCalibrationAndSmearingTool>( m_muonCalibrationAndSmearingTool_names[yr] ) ) {
-      m_muonCalibrationAndSmearingTools[yr] = asg::ToolStore::get<CP::MuonCalibrationAndSmearingTool>( m_muonCalibrationAndSmearingTool_names[yr] );
-    } else {
-      m_muonCalibrationAndSmearingTools[yr] = new CP::MuonCalibrationAndSmearingTool( m_muonCalibrationAndSmearingTool_names[yr]);
-      m_muonCalibrationAndSmearingTools[yr]->msg().setLevel( MSG::ERROR ); // DEBUG, VERBOSE, INFO
-
-      if ( yr == "Data16") {
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("Release", "Recs2016_15_07"));
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("SagittaCorr", m_do_sagittaCorr ));
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("doSagittaMCDistortion", m_do_sagittaMCDistortion ));
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("SagittaRelease", m_sagittaRelease ));
-      } else if (yr == "Data15") {
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("Release", "Recs2016_08_07"));
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("SagittaCorr", false ));
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("doSagittaMCDistortion", false ));
-      } else if ( !yr.empty() ) {
-        ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("Year", yr ));
-      }
-
-      if ( !m_release.empty() ) { ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->setProperty("Release", m_release)); }
-
-      ANA_CHECK( m_muonCalibrationAndSmearingTools[yr]->initialize());
-
-    }
+  if ( m_statComb18 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration StatComb1516 property to " << m_statComb18);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("StatComb18", static_cast<bool>(m_statComb18)));
   }
+  if ( m_sagittaCorr1516 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration SagittaCorr1516 property to " << m_sagittaCorr1516);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaCorr1516", static_cast<bool>(m_sagittaCorr1516)));
+  }
+  if ( m_sagittaCorr17 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration SagittaCorr17 property to " << m_sagittaCorr17);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaCorr17", static_cast<bool>(m_sagittaCorr17)));
+  }
+  if ( m_sagittaCorr18 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration SagittaCorr18 property to " << m_sagittaCorr18);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaCorr18", static_cast<bool>(m_sagittaCorr18)));
+  }
+  if ( m_doSagittaMCDistortion1516 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration doSagittaMCDistortion1516 property to " << m_doSagittaMCDistortion1516);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("doSagittaMCDistortion1516", static_cast<bool>(m_doSagittaMCDistortion1516)));
+  }
+  if ( m_doSagittaMCDistortion17 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration doSagittaMCDistortion17 property to " << m_doSagittaMCDistortion17);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("doSagittaMCDistortion17", static_cast<bool>(m_doSagittaMCDistortion17)));
+  }
+  if ( m_doSagittaMCDistortion18 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration doSagittaMCDistortion18 property to " << m_doSagittaMCDistortion18);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("doSagittaMCDistortion18", static_cast<bool>(m_doSagittaMCDistortion18)));
+  }
+  if ( m_sagittaCorrPhaseSpace1516 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration SagittaCorrPhaseSpace1516 property to " << m_sagittaCorrPhaseSpace1516);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaCorrPhaseSpace1516", static_cast<bool>(m_sagittaCorrPhaseSpace1516)));
+  }
+  if ( m_sagittaCorrPhaseSpace17 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration SagittaCorrPhaseSpace17 property to " << m_sagittaCorrPhaseSpace17);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaCorrPhaseSpace17", static_cast<bool>(m_sagittaCorrPhaseSpace17)));
+  }
+  if ( m_sagittaCorrPhaseSpace18 >= 0 ) {
+    ANA_MSG_WARNING("Overriding muon calibration SagittaCorrPhaseSpace18 property to " << m_sagittaCorrPhaseSpace18);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaCorrPhaseSpace18", static_cast<bool>(m_sagittaCorrPhaseSpace18)));
+  }
+  if ( !m_overrideRelease.empty() ) {
+    ANA_MSG_WARNING("Overriding muon calibration release to " << m_overrideRelease);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("Release", m_overrideRelease));
+  }
+  if ( !m_overrideSagittaRelease1516.empty() ) {
+    ANA_MSG_WARNING("Overriding muon 2015/2016 saggita release to " << m_overrideSagittaRelease1516);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaRelease1516", m_overrideSagittaRelease1516));
+  }
+  if ( !m_overrideSagittaRelease17.empty() ) {
+    ANA_MSG_WARNING("Overriding muon 2017 saggita release to " << m_overrideSagittaRelease17);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaRelease17", m_overrideSagittaRelease17));
+  }
+  if ( !m_overrideSagittaRelease18.empty() ) {
+    ANA_MSG_WARNING("Overriding muon 2018 saggita release to " << m_overrideSagittaRelease18);
+    ANA_CHECK(m_muonCalibrationTool_handle.setProperty("SagittaRelease18", m_overrideSagittaRelease18));
+  }
+  ANA_CHECK(m_muonCalibrationTool_handle.retrieve());
+  ANA_MSG_DEBUG("Retrieved tool: " << m_muonCalibrationTool_handle);
 
   // ***********************************************************
 
   // Get a list of recommended systematics for this tool
   //
   //const CP::SystematicSet recSyst = CP::SystematicSet();
-  const CP::SystematicSet& recSyst = m_muonCalibrationAndSmearingTools[m_YearsList.at(0)]->recommendedSystematics();
+  const CP::SystematicSet& recSyst = m_muonCalibrationTool_handle->recommendedSystematics();
 
   ANA_MSG_INFO(" Initializing Muon Calibrator Systematics :");
   //
@@ -211,7 +206,7 @@ EL::StatusCode MuonCalibrator :: initialize ()
   m_systList = HelperFunctions::getListofSystematics( recSyst, m_systName, m_systVal, msg() );
 
   ANA_MSG_INFO("Will be using MuonCalibrationAndSmearingTool systematic:");
-  std::vector< std::string >* SystMuonsNames = new std::vector< std::string >;
+  auto SystMuonsNames = std::make_unique< std::vector< std::string > >();
   for ( const auto& syst_it : m_systList ) {
     if ( m_systName.empty() ) {
       ANA_MSG_INFO("\t Running w/ nominal configuration only!");
@@ -221,8 +216,8 @@ EL::StatusCode MuonCalibrator :: initialize ()
     ANA_MSG_INFO("\t " << syst_it.name());
   }
 
-  ANA_CHECK(m_store->record(SystMuonsNames, "muons_Syst"+m_name ));
-  
+  ANA_CHECK(m_store->record(std::move(SystMuonsNames), "muons_Syst"+m_name ));
+
   // Write output sys names
   if ( m_writeSystToMetadata ) {
     TFile *fileMD = wk()->getOutputFile ("metadata");
@@ -246,42 +241,12 @@ EL::StatusCode MuonCalibrator :: execute ()
 
   m_numEvent++;
 
-  if ( !m_isMC && !m_forceDataCalib ) {
+  if ( !isMC() && !m_forceDataCalib ) {
     if ( m_numEvent == 1 ) { ANA_MSG_INFO( "Sample is Data! Do not apply any Muon Calibration... "); }
   }
 
   const xAOD::EventInfo* eventInfo(nullptr);
   ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
-
-  std::string randYear = "Data16";
-
-  // a default 2016 run
-  int runNumber = 296939;
-
-  if ( !m_isMC && m_forceDataCalib ) {
-    runNumber = eventInfo->runNumber();
-  } else if ( m_isMC ) {
-    runNumber = m_pileup_tool_handle->getRandomRunNumber( *eventInfo, true );
-  }
-
-  if (runNumber >= 266904 && runNumber <= 284484 ) {
-    randYear = "Data15";
-    if( ! (std::find(m_YearsList.begin(), m_YearsList.end(), randYear) != m_YearsList.end()) ) {
-      ANA_MSG_ERROR( "Random runNumber is 2015 but no corresponding MuonCalibrationAndSmearingTool tool has been initialized. Check ilumicalc config or extend m_Years!");
-      return EL::StatusCode::FAILURE;
-    }
-
-  } else if (runNumber >= 296939 ) {
-
-    randYear = "Data16";
-    if( ! (std::find(m_YearsList.begin(), m_YearsList.end(), randYear) != m_YearsList.end()) ) {
-     ANA_MSG_ERROR( "Random runNumber is 2016 but no corresponding MuonCalibrationAndSmearingTool tool has been initialized. Check ilumicalc config or extend m_Years!");
-     return EL::StatusCode::FAILURE;
-    }
-
-  }
-
-
 
   // get the collections from TEvent or TStore
   //
@@ -293,7 +258,7 @@ EL::StatusCode MuonCalibrator :: execute ()
   // prepare a vector of the names of CDV containers
   // must be a pointer to be recorded in TStore
   //
-  std::vector< std::string >* vecOutContainerNames = new std::vector< std::string >;
+  auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
 
   for ( const auto& syst_it : m_systList ) {
 
@@ -310,7 +275,7 @@ EL::StatusCode MuonCalibrator :: execute ()
 
     // apply syst
     //
-    if ( m_muonCalibrationAndSmearingTools[randYear]->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
+    if ( m_muonCalibrationTool_handle->applySystematicVariation(syst_it) != CP::SystematicCode::Ok ) {
       ANA_MSG_ERROR( "Failed to configure MuonCalibrationAndSmearingTool for systematic " << syst_it.name());
       return EL::StatusCode::FAILURE;
     }
@@ -326,20 +291,19 @@ EL::StatusCode MuonCalibrator :: execute ()
     // now calibrate!
     //
     unsigned int idx(0);
-    if ( m_isMC || m_forceDataCalib ) {
+    if ( isMC() || m_forceDataCalib ) {
 
       for ( auto muSC_itr : *(calibMuonsSC.first) ) {
 
-	ANA_MSG_DEBUG( "  uncailbrated muon " << idx << ", pt = " << muSC_itr->pt()*1e-3 << " GeV");
-	if(muSC_itr-> primaryTrackParticle()){
-	  if ( m_muonCalibrationAndSmearingTools[randYear]->applyCorrection(*muSC_itr) == CP::CorrectionCode::Error ) {  // Can have CorrectionCode values of Ok, OutOfValidityRange, or Error. Here only checking for Error.
-	    ANA_MSG_WARNING( "MuonCalibrationAndSmearingTool returned Error CorrectionCode");		  // If OutOfValidityRange is returned no modification is made and the original muon values are taken.
-	  }
-	}
+	      ANA_MSG_VERBOSE( "  uncailbrated muon " << idx << ", pt = " << muSC_itr->pt()*1e-3 << " GeV");
+	      if(muSC_itr-> primaryTrackParticle()){
+	        if ( m_muonCalibrationTool_handle->applyCorrection(*muSC_itr) == CP::CorrectionCode::Error ) {  // Can have CorrectionCode values of Ok, OutOfValidityRange, or Error. Here only checking for Error.
+	          ANA_MSG_WARNING( "MuonCalibrationAndSmearingTool returned Error CorrectionCode");		  // If OutOfValidityRange is returned no modification is made and the original muon values are taken.
+	        }
+	      }
 
-	ANA_MSG_DEBUG( "  corrected muon pt = " << muSC_itr->pt()*1e-3 << " GeV");
-
-	++idx;
+	      ANA_MSG_VERBOSE( "  corrected muon pt = " << muSC_itr->pt()*1e-3 << " GeV");
+	      ++idx;
 
       } // close calibration loop
     }
@@ -378,7 +342,7 @@ EL::StatusCode MuonCalibrator :: execute ()
   // add vector<string container_names_syst> to TStore
   //
   ANA_MSG_DEBUG( "record m_outputAlgoSystNames");
-  ANA_CHECK( m_store->record( vecOutContainerNames, m_outputAlgoSystNames));
+  ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgoSystNames));
 
   // look what we have in TStore
   //
@@ -414,11 +378,7 @@ EL::StatusCode MuonCalibrator :: finalize ()
   // merged.  This is different from histFinalize() in that it only
   // gets called on worker nodes that processed input events.
 
-  ANA_MSG_INFO( "Deleting tool instances...");
-
-  for(auto yr : m_YearsList) {
-    if ( m_muonCalibrationAndSmearingTools[yr] ) { m_muonCalibrationAndSmearingTools[yr] = nullptr; delete m_muonCalibrationAndSmearingTools[yr]; }
-  }
+  ANA_MSG_DEBUG( "Calling finalize");
 
   return EL::StatusCode::SUCCESS;
 }

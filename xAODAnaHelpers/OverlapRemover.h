@@ -45,10 +45,10 @@
 
           c = xAH_config()
           # ...
-          c.setalg("JetSelector", JetSelectorDict)
-          c.setalg("ElectronSelector", ElectronSelectorDict)
+          c.algorithm("JetSelector", JetSelectorDict)
+          c.algorithm("ElectronSelector", ElectronSelectorDict)
           # ...
-          c.setalg("OverlapRemover", OverlapRemoverDict)
+          c.algorithm("OverlapRemover", OverlapRemoverDict)
           # ...
 
       where each algorithm has the following I/O systematics configuration (via python dictionaries):
@@ -142,6 +142,10 @@ class OverlapRemover : public xAH::Algorithm
   std::string  m_outContainerName_Taus = "";
   std::string  m_inputAlgoTaus = "";
 
+  /** @brief To remove muons reconstructed as p-flow jets
+  https://twiki.cern.ch/twiki/bin/view/AtlasProtected/HowToCleanJetsR21#Muons_Reconstructed_as_Jets_in_P */
+  bool m_doMuPFJetOR = false;
+
  protected:
 
   /** @brief A counter for the number of processed events */
@@ -154,8 +158,6 @@ class OverlapRemover : public xAH::Algorithm
   int m_weightNumEventPass; //!
   /** @brief A counter for the number of passed objects */
   int m_numObjectPass;      //!
-  /** @brief Container to be filled by executeOR with combined systematics */
-  std::vector<std::string> *m_vecOutContainerNames; //!
 
   /**
      @brief Consider electrons in the OLR
@@ -280,7 +282,8 @@ public:
 				    const xAOD::PhotonContainer* inPhotons,
 				    const xAOD::TauJetContainer* inTaus,
 				    SystType syst_type = NOMINAL,
-				    std::vector<std::string>* sysVec = nullptr);
+				    std::vector<std::string>* sysVec = nullptr,
+            std::vector<std::string>* sysVecOut = nullptr);
 
   /** @brief Setup cutflow histograms */
   EL::StatusCode setCutFlowHist();

@@ -13,7 +13,7 @@
 #include <TH2F.h>
 #include <TH3F.h>
 #include <TProfile.h>
-#include <EventLoop/Worker.h>
+#include <EventLoop/IWorker.h>
 #include <xAODRootAccess/TEvent.h>
 
 // for StatusCode::isSuccess
@@ -192,7 +192,7 @@ class HistogramManager {
     /**
      * @brief record all histograms from HistogramManager#m_allHists to the worker
      */
-    void record(EL::Worker* wk);
+    void record(EL::IWorker* wk);
 
     /**
       * @brief the standard message stream for this algorithm
@@ -202,6 +202,34 @@ class HistogramManager {
       * @brief allow ANA_MSG_XXXX macros to be used within algorithms for a given level
       */
     MsgStream& msg (int level) const;
+
+    /**
+     * @brief Typedef for convenience
+     */
+    typedef std::unordered_map< std::string, TH1* > HistMap_t;
+
+    /**
+     * @brief The map of histogram names to their pointers
+     */
+    HistMap_t m_histMap;
+
+    /**
+     * @brief Return the pointer to the histogram
+     */
+    TH1* findHist(const std::string& histName);
+
+    /**
+     * @brief Fill a histogram by name. Can be overloaded with weight.
+     * 
+     * @param histName   The name of the histogram to be filled
+     * @param value      The value to fill the histogram with
+     */
+    void fillHist(const std::string& histName, double value);
+    /**
+     * @overload
+     */
+    void fillHist(const std::string& histName, double value, double weight);
+
 
   private:
     /**
@@ -213,7 +241,7 @@ class HistogramManager {
     void Sumw2(TH1* hist, bool flag=true);
 
     /**
-     * @brief Push the new histogram to HistogramManager#m_allHists
+     * @brief Push the new histogram to HistogramManager#m_allHists and add its name to HistogramManager#m_histMap
      */
     void record(TH1* hist);
 
@@ -234,6 +262,7 @@ class HistogramManager {
      * @overload
      */
     void SetLabel(TH1* hist, std::string xlabel, std::string ylabel, std::string zlabel);
+
 
 };
 

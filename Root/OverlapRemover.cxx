@@ -120,6 +120,7 @@ EL::StatusCode OverlapRemover :: initialize ()
   m_store = wk()->xaodStore();
 
   ANA_MSG_INFO( "Number of events in file: " << m_event->getEntries() );
+  
 
   if ( m_inContainerName_Jets.empty() ) {
     ANA_MSG_ERROR( "InputContainerJets is empty! Must have it to perform Overlap Removal! Exiting.");
@@ -130,18 +131,19 @@ EL::StatusCode OverlapRemover :: initialize ()
   if ( !m_inContainerName_Muons.empty() )     { m_useMuons     = true; }
   if ( !m_inContainerName_Taus.empty() )      { m_useTaus      = true; }
   if ( !m_inContainerName_Photons.empty() )   { m_usePhotons   = true; }
-
+  
   m_outAuxContainerName_Electrons   = m_outContainerName_Electrons + "Aux."; // the period is very important!
   m_outAuxContainerName_Muons       = m_outContainerName_Muons + "Aux.";     // the period is very important!
   m_outAuxContainerName_Jets        = m_outContainerName_Jets + "Aux.";      // the period is very important!
   m_outAuxContainerName_Photons     = m_outContainerName_Photons + "Aux.";   // the period is very important!
   m_outAuxContainerName_Taus        = m_outContainerName_Taus + "Aux.";      // the period is very important!
 
+  
   if ( setCounters() == EL::StatusCode::FAILURE ) {
     ANA_MSG_ERROR( "Failed to properly set event/object counters. Exiting." );
     return EL::StatusCode::FAILURE;
   }
-
+  
   // initialize ASG overlap removal tool
   const std::string selected_label = ( m_useSelected ) ? "passSel" : "";  // set with decoration flag you use for selected objects if want to consider only selected objects in OR, otherwise it will perform OR on all objects
 
@@ -160,11 +162,12 @@ EL::StatusCode OverlapRemover :: initialize ()
   orFlags.doTaus      = m_useTaus;
   orFlags.doPhotons   = m_usePhotons;
   orFlags.doFatJets   = false;
+  orFlags.doMuPFJetOR = m_doMuPFJetOR;
 
   ANA_CHECK( ORUtils::recommendedTools(orFlags, m_ORToolbox));
   ANA_CHECK( m_ORToolbox.initialize());
   ANA_MSG_INFO( "OverlapRemover Interface succesfully initialized!" );
-
+  
   return EL::StatusCode::SUCCESS;
 }
 
@@ -188,12 +191,12 @@ EL::StatusCode OverlapRemover :: execute ()
   const xAOD::TauJetContainer* inTaus        (nullptr);
 
   // syst container name
-  m_vecOutContainerNames = new std::vector< std::string >;
+  auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
 
   // --------------------------------------------------------------------------------------------
   //
   // always run the nominal case
-  executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, NOMINAL);
+  executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, NOMINAL, nullptr, vecOutContainerNames.get());
 
   // look what do we have in TStore
   if(msgLvl(MSG::VERBOSE)) m_store->print();
@@ -218,7 +221,7 @@ EL::StatusCode OverlapRemover :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames_el, m_inputAlgoElectrons, 0, m_store, msg()) );
 
     if ( HelperFunctions::found_non_dummy_sys(systNames_el) ) {
-      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  ELSYST, systNames_el);
+      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  ELSYST, systNames_el, vecOutContainerNames.get());
     }
 
   }
@@ -238,7 +241,7 @@ EL::StatusCode OverlapRemover :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames_mu, m_inputAlgoMuons, 0, m_store, msg()) );
 
     if ( HelperFunctions::found_non_dummy_sys(systNames_mu) ) {
-      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  MUSYST, systNames_mu);
+      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  MUSYST, systNames_mu, vecOutContainerNames.get());
     }
 
   }
@@ -258,7 +261,7 @@ EL::StatusCode OverlapRemover :: execute ()
     ANA_CHECK( HelperFunctions::retrieve(systNames_jet, m_inputAlgoJets, 0, m_store, msg()) );
 
     if ( HelperFunctions::found_non_dummy_sys(systNames_jet) ) {
-      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  JETSYST, systNames_jet);
+      executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  JETSYST, systNames_jet, vecOutContainerNames.get());
     }
 
   }
@@ -277,10 +280,9 @@ EL::StatusCode OverlapRemover :: execute ()
     std::vector<std::string>* systNames_photon;
     ANA_CHECK( HelperFunctions::retrieve(systNames_photon, m_inputAlgoPhotons, 0, m_store, msg()) );
 
-    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  PHSYST, systNames_photon);
+    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus,  PHSYST, systNames_photon, vecOutContainerNames.get());
 
   }
-
   // **************** //
   //       Taus       //
   // **************** //
@@ -295,12 +297,12 @@ EL::StatusCode OverlapRemover :: execute ()
     std::vector<std::string>* systNames_tau;
     ANA_CHECK( HelperFunctions::retrieve(systNames_tau, m_inputAlgoTaus, 0, m_store, msg()) );
 
-    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, TAUSYST, systNames_tau);
+    executeOR(inElectrons, inMuons, inJets, inPhotons, inTaus, TAUSYST, systNames_tau, vecOutContainerNames.get());
 
   }
 
   // save list of systs that should be considered down stream
-  ANA_CHECK( m_store->record( m_vecOutContainerNames, m_outputAlgoSystNames));
+  ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgoSystNames));
 
   // look what do we have in TStore
   if(msgLvl(MSG::VERBOSE)) m_store->print();
@@ -434,7 +436,7 @@ EL::StatusCode OverlapRemover :: fillObjectCutflow (const xAOD::IParticleContain
 
 EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inElectrons, const xAOD::MuonContainer* inMuons, const xAOD::JetContainer* inJets,
                const xAOD::PhotonContainer* inPhotons,   const xAOD::TauJetContainer* inTaus,
-               SystType syst_type, std::vector<std::string>* sysVec)
+               SystType syst_type, std::vector<std::string>* sysVec, std::vector<std::string>* sysVecOut)
 {
 
   // instantiate output container(s)
@@ -509,7 +511,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
       // do the actual OR
       //
       ANA_MSG_DEBUG(  "Calling removeOverlaps()");
-      ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons));
+      ANA_CHECK( m_ORToolbox.masterTool->removeOverlaps(inElectrons, inMuons, inJets, inTaus, inPhotons)); // This line raises an exception
       ANA_MSG_DEBUG(  "Done Calling removeOverlaps()");
 
       std::string ORdecor("passOR");
@@ -563,7 +565,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
         if ( m_useTaus )     { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus )); }
       }
 
-      m_vecOutContainerNames->push_back("");
+      sysVecOut->push_back("");
       break;
     }
     case ELSYST : // electron syst
@@ -666,7 +668,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
           if ( m_useTaus )   { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
         }
 
-        m_vecOutContainerNames->push_back(systName);
+        sysVecOut->push_back(systName);
       } // close loop on systematic sets available from upstream algo (Electrons)
 
       break;
@@ -771,7 +773,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
           if ( m_useTaus )      { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
         }
 
-        m_vecOutContainerNames->push_back(systName);
+        sysVecOut->push_back(systName);
       } // close loop on systematic sets available from upstream algo (Muons)
 
       break;
@@ -878,7 +880,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
           if ( m_useTaus )      { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
         }
 
-        m_vecOutContainerNames->push_back(systName);
+        sysVecOut->push_back(systName);
       } // close loop on systematic sets available from upstream algo (Jets)
 
       break;
@@ -984,7 +986,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
           if ( m_useTaus )    { ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName )); }
         }
 
-        m_vecOutContainerNames->push_back(systName);
+        sysVecOut->push_back(systName);
       } // close loop on systematic sets available from upstream algo (Photons)
 
       break;
@@ -1089,7 +1091,7 @@ EL::StatusCode OverlapRemover :: executeOR(  const xAOD::ElectronContainer* inEl
           ANA_CHECK( m_store->record( selectedTaus, m_outContainerName_Taus + systName ));
         }
 
-        m_vecOutContainerNames->push_back(systName);
+        sysVecOut->push_back(systName);
       } // close loop on systematic sets available from upstream algo (Taus)
 
       break;

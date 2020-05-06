@@ -5,6 +5,7 @@
 #include <string>
 
 #include "xAODEventInfo/EventInfo.h"
+#include "xAODTracking/VertexContainer.h"
 
 #include <xAODAnaHelpers/HelperClasses.h>
 
@@ -13,13 +14,13 @@ namespace xAH {
   class EventInfo
   {
   public:
-    EventInfo(const std::string& detailStr="", float units = 1e3, bool mc = false);
+    EventInfo(const std::string& detailStr="", float units = 1e3, bool mc = false, bool storeSyst = true);
     ~EventInfo();
 
     void setTree    (TTree *tree);
     void setBranches(TTree *tree);
     void clear();
-    void FillEvent( const xAOD::EventInfo* eventInfo,  xAOD::TEvent* event = nullptr);
+    void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr);
     template <typename T_BR>
       void connectBranch(TTree *tree, std::string name, T_BR *variable);
 
@@ -28,6 +29,7 @@ namespace xAH {
     HelperClasses::EventInfoSwitch  m_infoSwitch;
     bool m_mc;
     bool m_debug;
+    bool m_storeSyst;
     float m_units;
 
   public:
@@ -44,17 +46,24 @@ namespace xAH {
     uint32_t m_TileFlags;
     uint32_t m_LArFlags;
     uint32_t m_SCTFlags;
+    bool     m_eventClean_LooseBad;
     int      m_mcEventNumber;
     int      m_mcChannelNumber;
     float    m_mcEventWeight;
+    std::vector<float> m_mcEventWeights;
     float    m_weight_pileup;
     float    m_weight_pileup_up;
     float    m_weight_pileup_down;
-    float    m_correct_mu;
+    float    m_correctedAvgMu;
+    float    m_correctedAndScaledAvgMu;
+    float    m_correctedMu;
+    float    m_correctedAndScaledMu;
     int      m_rand_run_nr;
     int      m_rand_lumiblock_nr;
     int      m_bcid;
-    float    m_prescale_DataWeight;
+    int      m_DistEmptyBCID;
+    int      m_DistLastUnpairedBCID;
+    int      m_DistNextUnpairedBCID;
 
     // event pileup
     int      m_npv;
@@ -63,6 +72,7 @@ namespace xAH {
 
     // event shapeEM
     double   m_rhoEM;
+    double   m_rhoEMPFLOW;
     double   m_rhoLC;
 
     // truth

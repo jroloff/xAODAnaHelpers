@@ -12,8 +12,8 @@
 #include "PATInterfaces/ISystematicsTool.h"
 
 // external tools include(s):
-#include "xAODBTaggingEfficiency/IBTaggingSelectionTool.h"
-#include "xAODBTaggingEfficiency/IBTaggingEfficiencyTool.h"
+#include "FTagAnalysisInterfaces/IBTaggingSelectionTool.h"
+#include "FTagAnalysisInterfaces/IBTaggingEfficiencyTool.h"
 
 // algorithm wrapper
 #include "xAODAnaHelpers/Algorithm.h"
@@ -24,11 +24,12 @@ class BJetEfficiencyCorrector : public xAH::Algorithm
   // that way they can be set directly from CINT and python.
 public:
   std::string m_inContainerName = "";
-  std::string m_outContainerName = "";
+  /**
+    @brief The name of the vector containing the names of the systematically-varied jet-related containers from the upstream algorithm, which will be processed by this algorithm.
+
+    Only jet calibration systematics or any other that create shallow copies of jet containers should be passed to this tool. It is advised to run this algorithm before running algorithms combining multiple calibration systematics (e.g. overlap removal).
+  */
   std::string m_inputAlgo = "";
-  std::string m_outputAlgo = "";
-  std::string m_sysNamesForParCont = ""; 
-  // this is the name of the vector of names for the systematics to be used for the creation of a parallel container. This will be just a copy of the nominal one with the sys name appended. Use cases: MET-specific systematics.
 
   // systematics
   std::string m_systName = "";
@@ -38,15 +39,18 @@ public:
   std::string m_corrFileName = "xAODBTaggingEfficiency/13TeV/2016-20_7-13TeV-MC15-CDI-July12_v1.root";
 
   std::string m_jetAuthor = "AntiKt4EMTopoJets";
+  /// @brief Minimum pT in MeV for taggable jets
+  float       m_minPt = -1;
   std::string m_taggerName = "MV2c10";
   bool        m_useDevelopmentFile = true;
   bool        m_coneFlavourLabel = true;
   std::string m_systematicsStrategy = "SFEigen";
+  /// @brief BTaggingSelectionTool throws an error on missing tagging weights. If false, a warning is given instead
+  bool        m_errorOnTagWeightFailure = true;
 
   // allowed operating points:
   // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/BTaggingCalibrationDataInterface#xAOD_interface
-  //For the fixed cut, valid options are: [ "FixedCutBEff_30", "FixedCutBEff_50", "FixedCutBEff_60", "FixedCutBEff_70", "FixedCutBEff_77", "FixedCutBEff_80", "FixedCutBEff_85", "FixedCutBEff_90" ]
-  //For the variable cut, valid options are: [ "FlatBEff_30", "FlatBEff_40", "FlatBEff_50", "FlatBEff_60", "FlatBEff_70", "FlatBEff_77", "FlatBEff_85" ]
+  //For the fixed cut, valid options are: [ "FixedCutBEff_60", "FixedCutBEff_70", "FixedCutBEff_77", "FixedCutBEff_85" ]
 
   /// @brief Operating point.
   std::string m_operatingPt = "FixedCutBEff_70";
@@ -54,23 +58,32 @@ public:
   std::string m_operatingPtCDI = "";
   /// @brief will only get scale factors for calibrated working points
   bool m_getScaleFactors = false;
+  /// @brief will get tagWeight, quantile, SF and InefficiencySF
+  bool m_useContinuous = false;
   /// @brief The decoration key written to passing objects
   std::string m_decor = "BTag";
+
+  /// @brief upper pt threshold of b-jet in OR in unit of GeV, negative value means no pt threshold
+  float m_orBJetPtUpperThres=-1;
+
+  /// @brief Calibration to use for MC (EfficiencyB/C/T/LightCalibrations), "auto" to determine from sample name
+  std::string m_EfficiencyCalibration = "";
 
 private:
 
   /// @brief The decoration key written to passing objects
   std::string m_decorSF = "";
-  
+  std::string m_decorWeight = ""; // only for continuous b-tagging
+  std::string m_decorQuantile = ""; // only for continuous b-tagging
+  std::string m_decorInefficiencySF = ""; // only for continuous b-tagging
+
   std::vector<std::string> m_inputAlgoList; //!
 
   bool m_runAllSyst = false; //!
 
-  bool m_isMC = false;        //!
-
   // tools
-  asg::AnaToolHandle<IBTaggingSelectionTool> m_BJetSelectTool_handle{"BTaggingSelectionTool"};  //!
-  asg::AnaToolHandle<IBTaggingEfficiencyTool> m_BJetEffSFTool_handle{"BTaggingEfficiencyTool"}; //!
+  asg::AnaToolHandle<IBTaggingSelectionTool> m_BJetSelectTool_handle{"BTaggingSelectionTool" , this}; //!
+  asg::AnaToolHandle<IBTaggingEfficiencyTool> m_BJetEffSFTool_handle{"BTaggingEfficiencyTool", this}; //!
 
   std::vector<CP::SystematicSet> m_systList; //!
 

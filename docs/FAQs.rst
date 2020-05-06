@@ -3,7 +3,7 @@
 xAH FAQ
 =======
 
-This is a list of Frequently Asked Questions about |xAH| and RootCore. Feel free to suggest new entries!
+This is a list of Frequently Asked Questions about |xAH| and analysis software. Feel free to suggest new entries!
 
 How do I...
 -----------
@@ -11,20 +11,18 @@ How do I...
 ... submit a grid (prun) job?
    Start with a minimal environment::
 
-       lsetup fax
        lsetup panda
-       rcSetup
 
    and a minimal configuration script::
 
         from xAH_config import xAH_config
         c = xAH_config()
-        c.setalg("BasicEventSelection", {"m_name": "test", "m_useMetaData": False})
+        c.algorithm("BasicEventSelection", {"m_name": "test", "m_useMetaData": False})
 
    Then we can submit a job::
 
         xAH_run.py --files "user.lgagnon.370150.Gtt.DAOD_SUSY10.e4049_s2608_r6765_r6282_p2411_tag_10_v1_output_xAOD.root" \
-        --config=test.py --inputDQ2 prun --optGridMergeOutput=1 \
+        --config=test.py prun --optGridMergeOutput=1 \
         --optGridNFilesPerJob=1.0 --optGridOutputSampleName=user.gstark.test
 
 ... submit ``xAH_run`` jobs with production privileges?
@@ -84,3 +82,16 @@ How do I...
    6. The tool associated to the handle will be automatically destroyed when appropriate. Hence, no need to call ``delete`` anywhere.
 
    If the same tool (identified by its name) needs to be used in another xAH algorithm downstream, just declare a tool handle member with the same ``IMyToolType``, call its constructor in the initialisation list and (if needed) change its tool name with ``make()``. Then in ``EL::initialize()`` simply call ``m_mytool_handle.initialize()``, without setting any property. It will automagically get the pointer to the correct tool from a registry, and all the tool properties will be preserved from the previous initialisation.
+
+SLC6 vs SLC7
+-----------
+
+If you're running into issues with grid submission because of checks for SLC7-compatible machines in `xAH_run.py` preventing you from doing so, then you can either:
+
+- ssh into lxplus SLC7 (``lxplus.cern.ch``)
+- run in a containerized SLC7 environment (``setupATLAS -c slc6``)
+
+If you think this message is happening in error, `file an issue <https://github.com/UCATLAS/xAODAnaHelpers/issues/new>`_ giving us the output from the following commands:
+
+- ``lsb_release -d``
+- ``printenv | grep _PLATFORM``

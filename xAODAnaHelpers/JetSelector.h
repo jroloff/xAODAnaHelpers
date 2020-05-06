@@ -25,9 +25,11 @@
 
 // external tools include(s):
 #include "AsgTools/AnaToolHandle.h"
-#include "JetJvtEfficiency/IJetJvtEfficiency.h"
+#include "JetAnalysisInterfaces/IJetJvtEfficiency.h"
 #include "JetInterface/IJetModifier.h"
-#include "xAODBTaggingEfficiency/IBTaggingSelectionTool.h"
+#include "FTagAnalysisInterfaces/IBTaggingSelectionTool.h"
+#include "TriggerMatchingTool/IMatchingTool.h"
+#include "TrigDecisionTool/TrigDecisionTool.h"
 
 class JetSelector : public xAH::Algorithm
 {
@@ -71,10 +73,15 @@ public:
       @endrst
 
    */
-
   bool m_cleanEvent = false;
   /** @brief Mark event with decorator if any passing jets are not clean */
   bool m_markCleanEvent = false;
+  /** @brief Choose the scale at which the selection is performed (default "Final", i.e. default 4vector) */
+  std::string m_jetScale4Selection = "Final";
+  /// @brief (MC-only) Kill pileup overlay event if reconstructed jets avg(pT1,pT2) > 1.4*(truth jet pT1)
+  bool m_doMCCleaning = false;
+  /// @brief Change the default 1.4 cut to x > 1.0
+  float m_mcCleaningCut = 1.4;
   /// @brief minimum number of objects passing cuts
   int m_pass_min = -1;
   /// @brief maximum number of objects passing cuts
@@ -124,6 +131,10 @@ public:
   float m_pt_max_JVT = 60e3;
   /// @brief detector eta cut
   float m_eta_max_JVT = 2.4;
+  /// @brief was JVT already run in an earlier instance of JetSelector?
+  bool m_jvtUsedBefore=false;
+  /// @brief Does the input have truth jets? If not, cannot decorate with true hard scatter / pileup info
+  bool m_haveTruthJets = true;
 
   /**
     @brief Minimum value of JVT for selecting jets.
@@ -179,7 +190,7 @@ public:
         "Medium"  87.1-97.0%     53.4-60.9%
         "Tight"   79.9-95.6%     45.4-50.3%
         ======== ============== =============
-        
+
         See :https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/FJVTCalibration for more information.
     @endrst
   */
@@ -199,6 +210,8 @@ public:
 
   float         m_systValfJVT = 0.0;
   std::string   m_systNamefJVT = "";
+  /// @brief was fJVT already run in an earlier instance of JetSelector?
+  bool m_fjvtUsedBefore=false;
 
   /// @brief Flag to apply btagging cut, if false just decorate decisions
   bool  m_doBTagCut = false;
@@ -222,6 +235,19 @@ public:
 
   std::string              m_passAuxDecorKeys = "";
   std::string              m_failAuxDecorKeys = "";
+
+  /* trigger matching */
+  /** A comma-separated string w/ alll the HLT single jet trigger chains for which you want to perform the matching. If left empty (as it is by default), no trigger matching will be attempted at all */
+  std::string    m_singleJetTrigChains = "";
+  /** A comma-separated string w/ all the HLT dijet trigger chains for which you want to perform the matching.  If left empty (as it is by default), no trigger matching will be attempted at all */
+  std::string    m_diJetTrigChains = "";
+
+  /// @brief remove duplicate jets (exactly the same eta)
+  bool m_removeDuplicates = false;
+  /// @brief number of events with duplicates
+  int m_count_events_with_duplicates = 0;
+  /// @brief sort jets (normally done by JetCalibrator, but HLT jets need sorting and don't get calibrated here)
+  bool m_sort = false;
 
 private:
   int m_numEvent;         //!
@@ -257,10 +283,18 @@ private:
   std::vector<CP::SystematicSet> m_systListJVT; //!
   std::vector<CP::SystematicSet> m_systListfJVT; //!
 
-  asg::AnaToolHandle<CP::IJetJvtEfficiency>  m_JVT_tool_handle{"CP::JetJvtEfficiency"};         //!
-  asg::AnaToolHandle<IJetModifier>           m_fJVT_tool_handle{"JetForwardJvtTool"};           //!
-  asg::AnaToolHandle<CP::IJetJvtEfficiency>  m_fJVT_eff_tool_handle{"CP::JetJvtEfficiency"};    //!
+  std::vector<std::string>            m_singleJetTrigChainsList; //!  /* contains all the HLT trigger chains tokens extracted from m_singleJetTrigChains */
+  std::vector<std::string>            m_diJetTrigChainsList;     //!  /* contains all the HLT trigger chains tokens extracted from m_diJetTrigChains */
+  
+  asg::AnaToolHandle<CP::IJetJvtEfficiency>  m_JVT_tool_handle{"CP::JetJvtEfficiency/JVT"}; //!
+  asg::AnaToolHandle<CP::IJetJvtEfficiency>  m_fJVT_eff_tool_handle{"CP::JetJvtEfficiency/fJVT"}; //!
   asg::AnaToolHandle<IBTaggingSelectionTool> m_BJetSelectTool_handle{"BTaggingSelectionTool"};  //!
+
+  asg::AnaToolHandle<Trig::IMatchingTool>    m_trigJetMatchTool_handle{"Trig::MatchingTool/MatchingTool", this}; //!
+  asg::AnaToolHandle<Trig::TrigDecisionTool> m_trigDecTool_handle{"Trig::TrigDecisionTool/TrigDecisionTool"}; //!
+
+  /// @brief This internal variable gets set to false if no triggers are defined or if TrigDecisionTool is missing
+  bool m_doTrigMatch = true; //!
 
   std::string m_outputJVTPassed = "JetJVT_Passed"; //!
   std::string m_outputfJVTPassed = "JetfJVT_Passed"; //!
@@ -289,7 +323,7 @@ public:
   virtual EL::StatusCode histFinalize ();
 
   // these are the functions not inherited from Algorithm
-  virtual bool executeSelection( const xAOD::JetContainer* inJets, float mcEvtWeight, bool count, std::string inContainerName, std::string outContainerName, bool isNominal );
+  virtual bool executeSelection( const xAOD::JetContainer* inJets, float mcEvtWeight, bool count, std::string outContainerName, bool isNominal );
 
   // added functions not from Algorithm
   // why does this need to be virtual?

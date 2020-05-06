@@ -72,6 +72,11 @@ EL::StatusCode MuonSelector :: histInitialize ()
   ANA_MSG_INFO( "Calling histInitialize");
   ANA_CHECK( xAH::Algorithm::algInitialize());
 
+  if ( this->numInstances() > 1 ) {
+    m_isUsedBefore = true;
+    ANA_MSG_INFO( "\t An algorithm of the same type has been already used " << numInstances() << " times" );
+  }
+
   return EL::StatusCode::SUCCESS;
 }
 
@@ -122,10 +127,6 @@ EL::StatusCode MuonSelector :: initialize ()
   // preselecting objects, and then again for the final selection
   //
   ANA_MSG_INFO( "Algorithm name: " << m_name << " - of type " << m_className );
-  if ( this->numInstances() > 0 ) {
-    m_isUsedBefore = true;
-    ANA_MSG_INFO( "\t An algorithm of the same type has been already used " << numInstances() << " times" );
-  }
 
   if ( m_useCutFlow ) {
 
@@ -182,7 +183,8 @@ EL::StatusCode MuonSelector :: initialize ()
 
   HelperClasses::EnumParser<xAOD::Muon::Quality> muQualityParser;
   m_muonQuality             = static_cast<int>( muQualityParser.parseEnum(m_muonQualityStr) );
-
+  if (m_muonQualityStr=="HighPt") m_muonQuality=4;
+  else if (m_muonQualityStr=="LowPt") m_muonQuality=5;
 
   m_outAuxContainerName     = m_outContainerName + "Aux."; // the period is very important!
 
@@ -191,6 +193,8 @@ EL::StatusCode MuonSelector :: initialize ()
   muonQualitySet.insert(1);
   muonQualitySet.insert(2);
   muonQualitySet.insert(3);
+  muonQualitySet.insert(4);
+  muonQualitySet.insert(5);
   if ( muonQualitySet.find(m_muonQuality) == muonQualitySet.end() ) {
     ANA_MSG_ERROR( "Unknown muon quality requested: " << m_muonQuality);
     return EL::StatusCode::FAILURE;
@@ -210,14 +214,15 @@ EL::StatusCode MuonSelector :: initialize ()
 
   // Parse input isolation WP list, split by comma, and put into a vector for later use
   // Make sure it's not empty!
-  //
-  if ( m_IsoWPList.empty() ) {
-    m_IsoWPList	= "LooseTrackOnly,Loose,Tight,Gradient,GradientLoose";
-  }
-  std::string token;
-  std::istringstream ss(m_IsoWPList);
-  while ( std::getline(ss, token, ',') ) {
-    m_IsoKeys.push_back(token);
+  if(m_doIsolation){
+    if ( m_IsoWPList.empty() ) {
+      ANA_MSG_ERROR("Empty isolation WP list");
+    }
+    std::string token;
+    std::istringstream ss(m_IsoWPList);
+    while ( std::getline(ss, token, ',') ) {
+      m_IsoKeys.push_back(token);
+    }
   }
 
   if ( m_inContainerName.empty() ){
@@ -240,53 +245,53 @@ EL::StatusCode MuonSelector :: initialize ()
   // Set eta and quality requirements in order to accept the muon - ID tracks required by default
   //
 
-  setToolName(m_muonSelectionTool_handle);
   ANA_CHECK( m_muonSelectionTool_handle.setProperty( "MaxEta", static_cast<double>(m_eta_max) ));
   ANA_CHECK( m_muonSelectionTool_handle.setProperty( "MuQuality", m_muonQuality ));
-  ANA_CHECK( m_muonSelectionTool_handle.setProperty("OutputLevel", msg().level() ));
+  ANA_CHECK( m_muonSelectionTool_handle.setProperty( "OutputLevel", msg().level() ));
   ANA_CHECK( m_muonSelectionTool_handle.retrieve());
   ANA_MSG_DEBUG("Retrieved tool: " << m_muonSelectionTool_handle);
 
-  // *************************************
-  //
-  // Initialise CP::IsolationSelectionTool
-  //
-  // *************************************
+  if(m_doIsolation){
+    // *************************************
+    //
+    // Initialise CP::IsolationSelectionTool
+    //
+    // *************************************
 
-  setToolName(m_isolationSelectionTool_handle);
-  // Do this only for the first WP in the list
-  ANA_MSG_DEBUG( "Adding isolation WP " << m_IsoKeys.at(0) << " to IsolationSelectionTool" );
-  ANA_CHECK( m_isolationSelectionTool_handle.setProperty("MuonWP", (m_IsoKeys.at(0)).c_str()));
-  ANA_CHECK( m_isolationSelectionTool_handle.setProperty("OutputLevel", msg().level() ));
-  ANA_CHECK( m_isolationSelectionTool_handle.retrieve());
-  ANA_MSG_DEBUG("Retrieved tool: " << m_isolationSelectionTool_handle);
-  m_isolationSelectionTool = dynamic_cast<CP::IsolationSelectionTool*>(m_isolationSelectionTool_handle.get() ); // see header file for why
+    // Do this only for the first WP in the list
+    ANA_MSG_DEBUG( "Adding isolation WP " << m_IsoKeys.at(0) << " to IsolationSelectionTool" );
+    ANA_CHECK( m_isolationSelectionTool_handle.setProperty("MuonWP", (m_IsoKeys.at(0)).c_str()));
+    ANA_CHECK( m_isolationSelectionTool_handle.setProperty("OutputLevel", msg().level() ));
+    ANA_CHECK( m_isolationSelectionTool_handle.retrieve());
+    ANA_MSG_DEBUG("Retrieved tool: " << m_isolationSelectionTool_handle);
+    m_isolationSelectionTool = dynamic_cast<CP::IsolationSelectionTool*>(m_isolationSelectionTool_handle.get() ); // see header file for why
 
-  // Add the remaining input WPs to the tool
-  // (start from 2nd element)
-  //
-  for ( auto WP_itr = std::next(m_IsoKeys.begin()); WP_itr != m_IsoKeys.end(); ++WP_itr ) {
+    // Add the remaining input WPs to the tool
+    // (start from 2nd element)
+    //
+    for ( auto WP_itr = std::next(m_IsoKeys.begin()); WP_itr != m_IsoKeys.end(); ++WP_itr ) {
 
-     ANA_MSG_DEBUG( "Adding extra isolation WP " << *WP_itr << " to IsolationSelectionTool" );
+       ANA_MSG_DEBUG( "Adding extra isolation WP " << *WP_itr << " to IsolationSelectionTool" );
 
-     if ( (*WP_itr).find("UserDefined") != std::string::npos ) {
+       if ( (*WP_itr).find("UserDefined") != std::string::npos ) {
 
-       HelperClasses::EnumParser<xAOD::Iso::IsolationType> isoParser;
+         HelperClasses::EnumParser<xAOD::Iso::IsolationType> isoParser;
 
-       std::vector< std::pair<xAOD::Iso::IsolationType, std::string> > myCuts;
-       myCuts.push_back(std::make_pair<xAOD::Iso::IsolationType, std::string>(isoParser.parseEnum(m_TrackBasedIsoType), m_TrackIsoEff.c_str() ));
-       myCuts.push_back(std::make_pair<xAOD::Iso::IsolationType, std::string>(isoParser.parseEnum(m_CaloBasedIsoType) , m_CaloIsoEff.c_str()  ));
+         std::vector< std::pair<xAOD::Iso::IsolationType, std::string> > myCuts;
+         myCuts.push_back(std::make_pair<xAOD::Iso::IsolationType, std::string>(isoParser.parseEnum(m_TrackBasedIsoType), m_TrackIsoEff.c_str() ));
+         myCuts.push_back(std::make_pair<xAOD::Iso::IsolationType, std::string>(isoParser.parseEnum(m_CaloBasedIsoType) , m_CaloIsoEff.c_str()  ));
 
-       CP::IsolationSelectionTool::IsoWPType iso_type(CP::IsolationSelectionTool::Efficiency);
-       if ( (*WP_itr).find("Cut") != std::string::npos ) { iso_type = CP::IsolationSelectionTool::Cut; }
+         CP::IsolationSelectionTool::IsoWPType iso_type(CP::IsolationSelectionTool::Efficiency);
+         if ( (*WP_itr).find("Cut") != std::string::npos ) { iso_type = CP::IsolationSelectionTool::Cut; }
 
-       ANA_CHECK(  m_isolationSelectionTool->addUserDefinedWP((*WP_itr).c_str(), xAOD::Type::Muon, myCuts, "", iso_type));
+         ANA_CHECK(  m_isolationSelectionTool->addUserDefinedWP((*WP_itr).c_str(), xAOD::Type::Muon, myCuts, "", iso_type));
 
-     } else {
+       } else {
 
-        ANA_CHECK( m_isolationSelectionTool->addMuonWP( (*WP_itr).c_str() ));
+          ANA_CHECK( m_isolationSelectionTool->addMuonWP( (*WP_itr).c_str() ));
 
-     }
+       }
+    }
   }
 
   // **************************************
@@ -294,13 +299,9 @@ EL::StatusCode MuonSelector :: initialize ()
   // Initialise Trig::MatchingTool
   //
   // **************************************
-
-  // NB: check if TrigDecisionTool was initialized from BasicEventSelection or another algorithm
-  //     do not initialise if there are no input trigger chains, or the TrigDecisionTool hasn't been configured yet
-
   if( !( m_singleMuTrigChains.empty() && m_diMuTrigChains.empty() ) ) {
     // Grab the TrigDecTool from the ToolStore
-    if(!setToolName(m_trigDecTool_handle, m_trigDecTool_name)){
+    if(!m_trigDecTool_handle.isUserConfigured()){
       ANA_MSG_FATAL("A configured " << m_trigDecTool_handle.typeAndName() << " must have been previously created! Are you creating one in xAH::BasicEventSelection?" );
       return EL::StatusCode::FAILURE;
     }
@@ -308,7 +309,6 @@ EL::StatusCode MuonSelector :: initialize ()
     ANA_MSG_DEBUG("Retrieved tool: " << m_trigDecTool_handle);
 
     //  everything went fine, let's initialise the tool!
-    setToolName(m_trigMuonMatchTool_handle);
     ANA_CHECK( m_trigMuonMatchTool_handle.setProperty( "TrigDecisionTool", m_trigDecTool_handle ));
     ANA_CHECK( m_trigMuonMatchTool_handle.setProperty("OutputLevel", msg().level() ));
     ANA_CHECK( m_trigMuonMatchTool_handle.retrieve());
@@ -432,7 +432,7 @@ EL::StatusCode MuonSelector :: execute ()
     // prepare a vector of the names of CDV containers for usage by downstream algos
     // must be a pointer to be recorded in TStore
     //
-    std::vector< std::string >* vecOutContainerNames = new std::vector< std::string >;
+    auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
     ANA_MSG_DEBUG( " input list of syst size: " << static_cast<int>(systNames->size()) );
 
     // loop over systematic sets
@@ -484,7 +484,7 @@ EL::StatusCode MuonSelector :: execute ()
 
     // record in TStore the list of systematics names that should be considered down stream
     //
-    ANA_CHECK( m_store->record( vecOutContainerNames, m_outputAlgoSystNames));
+    ANA_CHECK( m_store->record( std::move(vecOutContainerNames), m_outputAlgoSystNames));
 
   }
 
@@ -508,7 +508,7 @@ bool MuonSelector :: executeSelection ( const xAOD::MuonContainer* inMuons, floa
 
   ANA_MSG_DEBUG( "In  executeSelection..." );
   const xAOD::VertexContainer* vertices(nullptr);
-  ANA_CHECK( HelperFunctions::retrieve(vertices, "PrimaryVertices", m_event, m_store, msg()) );
+  ANA_CHECK( HelperFunctions::retrieve(vertices, m_vertexContainerName, m_event, m_store, msg()) );
   const xAOD::Vertex *pvx = HelperFunctions::getPrimaryVertex(vertices, msg());
 
   int nPass(0); int nObj(0);
@@ -564,7 +564,7 @@ bool MuonSelector :: executeSelection ( const xAOD::MuonContainer* inMuons, floa
     ANA_MSG_DEBUG( "Reject event: nSelectedMuons ("<<nPass<<") < nPassMin ("<<m_pass_min<<")" );
     return false;
   }
-  if ( m_pass_max > 0 && nPass > m_pass_max ) {
+  if ( m_pass_max >= 0 && nPass > m_pass_max ) {
     ANA_MSG_DEBUG( "Reject event: nSelectedMuons ("<<nPass<<") > nPassMax ("<<m_pass_max<<")" );
     return false;
   }
@@ -668,6 +668,11 @@ bool MuonSelector :: executeSelection ( const xAOD::MuonContainer* inMuons, floa
 
       	    ANA_MSG_DEBUG( "\t\t is the muon pair ("<<imu<<","<<jmu<<") trigger matched? " << matched);
 
+            // set basic matching information
+            ( isTrigMatchedMapMuDecor( *myMuons[0] ) )[chain] = matched;
+            ( isTrigMatchedMapMuDecor( *myMuons[1] ) )[chain] = matched;
+
+            // set pair decision information
       	    std::pair <unsigned int, unsigned int>  chain_idxs = std::make_pair(imu,jmu);
             dimuon_trigmatch_pair  chain_decision = std::make_pair(chain_idxs,matched);
             diMuonTrigMatchPairMapDecor( *eventInfo ).insert( std::pair< std::string, dimuon_trigmatch_pair >(chain,chain_decision) );
@@ -743,7 +748,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
 
   ANA_MSG_DEBUG( "In  passCuts..." );
   // fill cutflow bin 'all' before any cut
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_all, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_all, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_all, 1 ); }
   ANA_MSG_DEBUG( "In  passCuts2..." );
   // *********************************************************************************************************************************************************************
@@ -761,10 +766,10 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
   int this_quality = static_cast<int>( m_muonSelectionTool_handle->getQuality( *muon ) );
   ANA_MSG_DEBUG( "Got quality" );
 
-  isVeryLooseQDecor( *muon ) = ( this_quality == static_cast<int>(xAOD::Muon::VeryLoose) ) ? 1 : 0;
-  isLooseQDecor( *muon )     = ( this_quality == static_cast<int>(xAOD::Muon::Loose) )     ? 1 : 0;
-  isMediumQDecor( *muon )    = ( this_quality == static_cast<int>(xAOD::Muon::Medium) )    ? 1 : 0;
-  isTightQDecor( *muon )     = ( this_quality == static_cast<int>(xAOD::Muon::Tight) )     ? 1 : 0;
+  isVeryLooseQDecor( *muon ) = ( this_quality <= static_cast<int>(xAOD::Muon::VeryLoose) ) ? 1 : 0;
+  isLooseQDecor( *muon )     = ( this_quality <= static_cast<int>(xAOD::Muon::Loose) )     ? 1 : 0;
+  isMediumQDecor( *muon )    = ( this_quality <= static_cast<int>(xAOD::Muon::Medium) )    ? 1 : 0;
+  isTightQDecor( *muon )     = ( this_quality <= static_cast<int>(xAOD::Muon::Tight) )     ? 1 : 0;
   ANA_MSG_DEBUG( "Doing muon quality" );
   // this will accept the muon based on the settings at initialization : eta, ID track info, muon quality
   if ( ! m_muonSelectionTool_handle->accept( *muon ) ) {
@@ -772,7 +777,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
     return 0;
   }
 
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_eta_and_quaility_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_eta_and_quaility_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_eta_and_quaility_cut, 1 ); }
 
   // *********************************************************************************************************************************************************************
@@ -786,7 +791,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
       return 0;
     }
   }
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_ptmax_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_ptmax_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_ptmax_cut, 1 ); }
 
   // *********************************************************************************************************************************************************************
@@ -799,7 +804,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
       return 0;
     }
   }
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_ptmin_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_ptmin_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_ptmin_cut, 1 ); }
 
   // *********************************************************************************************************************************************************************
@@ -813,7 +818,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
   //    return 0;
   //  }
   //}
-  //if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_type_cut, 1 );
+  //if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_type_cut, 1 );
   //if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_type_cut, 1 ); }
 
   // *********************************************************************************************************************************************************************
@@ -840,7 +845,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
   const xAOD::EventInfo* eventInfo(nullptr);
   ANA_CHECK( HelperFunctions::retrieve(eventInfo, m_eventInfoContainerName, m_event, m_store, msg()) );
 
-  double d0_significance = fabs( xAOD::TrackingHelpers::d0significance( tp, eventInfo->beamPosSigmaX(), eventInfo->beamPosSigmaY(), eventInfo->beamPosSigmaXY() ) );
+  double d0_significance = xAOD::TrackingHelpers::d0significance( tp, eventInfo->beamPosSigmaX(), eventInfo->beamPosSigmaY(), eventInfo->beamPosSigmaXY() );
 
   // Take distance between z0 and zPV ( after referring the PV z coordinate to the beamspot position, given by vz() ), multiplied by sin(theta)
   // see https://twiki.cern.ch/twiki/bin/view/AtlasProtected/InDetTrackingDC14 for further reference
@@ -854,7 +859,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
       ANA_MSG_DEBUG( "Muon failed z0*sin(theta) cut.");
       return 0;
   }
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_z0sintheta_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_z0sintheta_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_z0sintheta_cut, 1 ); }
 
   // decorate muon w/ z0*sin(theta) info
@@ -867,50 +872,52 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
       ANA_MSG_DEBUG( "Muon failed d0 cut.");
       return 0;
   }
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_d0_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_d0_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_d0_cut, 1 ); }
 
   // d0sig cut
   //
-  if ( !( d0_significance < m_d0sig_max ) ) {
+  if ( !( fabs(d0_significance) < m_d0sig_max ) ) {
       ANA_MSG_DEBUG( "Muon failed d0 significance cut.");
       return 0;
   }
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_d0sig_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_d0sig_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_d0sig_cut, 1 ); }
 
   // decorate muon w/ d0sig info
   static SG::AuxElement::Decorator< float > d0SigDecor("d0sig");
   d0SigDecor( *muon ) = static_cast<float>(d0_significance);
 
-  // *********************************************************************************************************************************************************************
-  //
-  // isolation cut
-  //
+  if(m_doIsolation){
+    // *********************************************************************************************************************************************************************
+    //
+    // isolation cut
+    //
 
-  // Get the "list" of input WPs with the accept() decision from the tool
-  //
-  Root::TAccept accept_list = m_isolationSelectionTool_handle->accept( *muon );
+    // Get the "list" of input WPs with the accept() decision from the tool
+    //
+    Root::TAccept accept_list = m_isolationSelectionTool_handle->accept( *muon );
 
-  // Decorate w/ decision for all input WPs
-  //
-  std::string base_decor("isIsolated");
-  for ( auto WP_itr : m_IsoKeys ) {
+    // Decorate w/ decision for all input WPs
+    //
+    std::string base_decor("isIsolated");
+    for ( auto WP_itr : m_IsoKeys ) {
 
-    std::string decorWP = base_decor + "_" + WP_itr;
+      std::string decorWP = base_decor + "_" + WP_itr;
 
-    ANA_MSG_DEBUG( "Decorate muon with " << decorWP << " - accept() ? " << accept_list.getCutResult( WP_itr.c_str()) );
-    muon->auxdecor<char>(decorWP) = static_cast<char>( accept_list.getCutResult( WP_itr.c_str() ) );
+      ANA_MSG_DEBUG( "Decorate muon with " << decorWP << " - accept() ? " << accept_list.getCutResult( WP_itr.c_str()) );
+      muon->auxdecor<char>(decorWP) = static_cast<char>( accept_list.getCutResult( WP_itr.c_str() ) );
 
+    }
+
+    // Apply the cut if needed
+    //
+    if ( !m_MinIsoWPCut.empty() && !accept_list.getCutResult( m_MinIsoWPCut.c_str() ) ) {
+      ANA_MSG_DEBUG( "Muon failed isolation cut " <<  m_MinIsoWPCut );
+      return 0;
+    }
   }
-
-  // Apply the cut if needed
-  //
-  if ( !m_MinIsoWPCut.empty() && !accept_list.getCutResult( m_MinIsoWPCut.c_str() ) ) {
-    ANA_MSG_DEBUG( "Muon failed isolation cut " <<  m_MinIsoWPCut );
-    return 0;
-  }
-  if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_iso_cut, 1 );
+  if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_iso_cut, 1 );
   if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_iso_cut, 1 ); }
 
   if( m_removeCosmicMuon ){
@@ -923,7 +930,7 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
       ANA_MSG_DEBUG("Muon failed cosmic cut" );
       return 0;
     }
-    if(m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_cosmic_cut, 1 );
+    if (!m_isUsedBefore && m_useCutFlow) m_mu_cutflowHist_1->Fill( m_mu_cutflow_cosmic_cut, 1 );
     if ( m_isUsedBefore && m_useCutFlow ) { m_mu_cutflowHist_2->Fill( m_mu_cutflow_cosmic_cut, 1 ); }
 
   }
@@ -932,4 +939,3 @@ int MuonSelector :: passCuts( const xAOD::Muon* muon, const xAOD::Vertex *primar
   ANA_MSG_DEBUG( "Leave passCuts... pass" );
   return 1;
 }
-

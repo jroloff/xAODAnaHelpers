@@ -12,6 +12,7 @@ ElectronContainer::ElectronContainer(const std::string& name, const std::string&
 
   if ( m_infoSwitch.m_kinematic ) {
     m_caloCluster_eta = new std::vector<float> ();
+    m_charge          = new std::vector<float> ();
   }
 
   if ( m_infoSwitch.m_trigger ){
@@ -21,16 +22,7 @@ ElectronContainer::ElectronContainer(const std::string& name, const std::string&
   }
 
   if ( m_infoSwitch.m_isolation ) {
-    m_isIsolated_LooseTrackOnly              = new std::vector<int>   ();
-    m_isIsolated_Loose                       = new std::vector<int>   ();
-    m_isIsolated_Tight                       = new std::vector<int>   ();
-    m_isIsolated_Gradient                    = new std::vector<int>   ();
-    m_isIsolated_GradientLoose               = new std::vector<int>   ();
-    m_isIsolated_FixedCutLoose               = new std::vector<int>   ();
-    m_isIsolated_FixedCutTight               = new std::vector<int>   ();
-    m_isIsolated_FixedCutTightTrackOnly      = new std::vector<int>   ();
-    m_isIsolated_UserDefinedFixEfficiency    = new std::vector<int>   ();
-    m_isIsolated_UserDefinedCut              = new std::vector<int>   ();
+    m_isIsolated = new std::map< std::string, std::vector< int > >();
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -47,41 +39,21 @@ ElectronContainer::ElectronContainer(const std::string& name, const std::string&
   }
 
   if ( m_infoSwitch.m_PID ) {
-    m_n_LHVeryLoose = 0;
-    m_LHVeryLoose = new std::vector<int>   ();
-
-    m_n_LHLoose = 0;
-    m_LHLoose = new std::vector<int>   ();
-
-    m_n_LHLooseBL = 0;
-    m_LHLooseBL = new std::vector<int>   ();
-
-    m_n_LHMedium = 0;
-    m_LHMedium = new std::vector<int>   ();
-
-    m_n_LHTight = 0;
-    m_LHTight = new std::vector<int>   ();
-
-    m_n_IsEMLoose = 0;
-    m_IsEMLoose = new std::vector<int>   ();
-
-    m_n_IsEMMedium = 0;
-    m_IsEMMedium = new std::vector<int>   ();
-
-    m_n_IsEMTight = 0;
-    m_IsEMTight = new std::vector<int>   ();
-
+    m_PID = new std::map< std::string, std::vector< int > >();
   }
 
   if ( m_infoSwitch.m_effSF && m_mc ) {
-
     m_TrigEff_SF = new std::map< std::string, std::vector< std::vector< float > > >();
     m_TrigMCEff  = new std::map< std::string, std::vector< std::vector< float > > >();
     m_PIDEff_SF  = new std::map< std::string, std::vector< std::vector< float > > >();
     m_IsoEff_SF  = new std::map< std::string, std::vector< std::vector< float > > >();
 
     m_RecoEff_SF = new std::vector< std::vector< float > > ();
+  }
 
+  if ( m_infoSwitch.m_recoparams ) {
+    m_author = new std::vector<int> ();
+    m_OQ     = new std::vector<int> ();
   }
 
   if ( m_infoSwitch.m_trackparams ) {
@@ -108,26 +80,20 @@ ElectronContainer::ElectronContainer(const std::string& name, const std::string&
     m_trkPixdEdX                 = new std::vector<float> ();
   }
 
-  if ( m_infoSwitch.m_effSF && m_mc ) {
-
-    // default PID working points if no user input
-    if ( !m_infoSwitch.m_PIDWPs.size() ) m_infoSwitch.m_PIDWPs = {"LooseAndBLayerLLH","MediumLLH","TightLLH"};
-
-    // default isolation working points if no user input
-    if ( !m_infoSwitch.m_isolWPs.size() ) m_infoSwitch.m_isolWPs = {"","isolGradient","isolLoose","isolTight"};
-
-    // default trigger working points if no user input
-    if ( !m_infoSwitch.m_trigWPs.size() ) m_infoSwitch.m_trigWPs = {"SINGLE_E_2015_e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose_2016_e24_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0"};
-
-    //for (auto& PID : m_infoSwitch.m_PIDWPs) {
-    //  for (auto& isol : m_infoSwitch.m_isolWPs) {
-    //    for (auto& trig : m_infoSwitch.m_trigWPs) {
-    //      Info("ElectronConainer()", "Used working points: %s_%s_%s", trig.c_str(), PID.c_str(), isol.c_str() );
-    //    }
-    //  }
-    //}
+  if ( m_infoSwitch.m_promptlepton ) {
+    m_PromptLeptonInput_DL1mu           = new std::vector<float> ();
+    m_PromptLeptonInput_DRlj            = new std::vector<float> ();
+    m_PromptLeptonInput_LepJetPtFrac    = new std::vector<float> ();
+    m_PromptLeptonInput_PtFrac          = new std::vector<float> ();
+    m_PromptLeptonInput_PtRel           = new std::vector<float> ();
+    m_PromptLeptonInput_TrackJetNTrack  = new std::vector<int>   ();
+    m_PromptLeptonInput_ip2             = new std::vector<float> ();
+    m_PromptLeptonInput_ip3             = new std::vector<float> ();
+    m_PromptLeptonInput_rnnip           = new std::vector<float> ();
+    m_PromptLeptonInput_sv1_jf_ntrkv    = new std::vector<int>   ();
+    m_PromptLeptonIso                   = new std::vector<float> ();
+    m_PromptLeptonVeto                  = new std::vector<float> ();
   }
-
 
 }
 
@@ -135,6 +101,7 @@ ElectronContainer::~ElectronContainer()
 {
   if ( m_infoSwitch.m_kinematic ) {
     delete m_caloCluster_eta;
+    delete m_charge;
   }
 
   if ( m_infoSwitch.m_trigger ){
@@ -144,16 +111,7 @@ ElectronContainer::~ElectronContainer()
   }
 
   if ( m_infoSwitch.m_isolation ) {
-    delete m_isIsolated_LooseTrackOnly              ;
-    delete m_isIsolated_Loose                       ;
-    delete m_isIsolated_Tight                       ;
-    delete m_isIsolated_Gradient                    ;
-    delete m_isIsolated_GradientLoose               ;
-    delete m_isIsolated_FixedCutLoose               ;
-    delete m_isIsolated_FixedCutTight               ;
-    delete m_isIsolated_FixedCutTightTrackOnly      ;
-    delete m_isIsolated_UserDefinedFixEfficiency    ;
-    delete m_isIsolated_UserDefinedCut              ;
+    delete m_isIsolated;
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -170,14 +128,7 @@ ElectronContainer::~ElectronContainer()
   }
 
   if ( m_infoSwitch.m_PID ) {
-    delete m_LHVeryLoose;
-    delete m_LHLoose    ;
-    delete m_LHLooseBL  ;
-    delete m_LHMedium   ;
-    delete m_LHTight    ;
-    delete m_IsEMLoose  ;
-    delete m_IsEMMedium ;
-    delete m_IsEMTight  ;
+    delete m_PID;
   }
 
   if ( m_infoSwitch.m_effSF && m_mc ) {
@@ -186,6 +137,11 @@ ElectronContainer::~ElectronContainer()
     delete m_PIDEff_SF  ;
     delete m_IsoEff_SF  ;
     delete m_RecoEff_SF ;
+  }
+
+  if ( m_infoSwitch.m_recoparams ) {
+    delete m_author   ;
+    delete m_OQ       ;
   }
 
   if ( m_infoSwitch.m_trackparams ) {
@@ -212,6 +168,21 @@ ElectronContainer::~ElectronContainer()
     delete m_trkPixdEdX              ;
   }
 
+  if ( m_infoSwitch.m_promptlepton ) {
+    delete m_PromptLeptonInput_DL1mu           ;
+    delete m_PromptLeptonInput_DRlj            ;
+    delete m_PromptLeptonInput_LepJetPtFrac    ;
+    delete m_PromptLeptonInput_PtFrac          ;
+    delete m_PromptLeptonInput_PtRel           ;
+    delete m_PromptLeptonInput_TrackJetNTrack  ;
+    delete m_PromptLeptonInput_ip2             ;
+    delete m_PromptLeptonInput_ip3             ;
+    delete m_PromptLeptonInput_rnnip           ;
+    delete m_PromptLeptonInput_sv1_jf_ntrkv    ;
+    delete m_PromptLeptonIso                   ;
+    delete m_PromptLeptonVeto                  ;
+  }
+
 }
 
 void ElectronContainer::setTree(TTree *tree)
@@ -222,6 +193,7 @@ void ElectronContainer::setTree(TTree *tree)
 
   if ( m_infoSwitch.m_kinematic ) {
     connectBranch<float>(tree,"caloCluster_eta", &m_caloCluster_eta);
+    connectBranch<float>(tree,"charge",          &m_charge);
   }
 
   if ( m_infoSwitch.m_trigger ){
@@ -231,16 +203,12 @@ void ElectronContainer::setTree(TTree *tree)
   }
 
   if ( m_infoSwitch.m_isolation ) {
-    connectBranch<int>(tree, "isIsolated_LooseTrackOnly",              &m_isIsolated_LooseTrackOnly);
-    connectBranch<int>(tree, "isIsolated_Loose",                       &m_isIsolated_Loose);
-    connectBranch<int>(tree, "isIsolated_Tight",                       &m_isIsolated_Tight);
-    connectBranch<int>(tree, "isIsolated_Gradient",                    &m_isIsolated_Gradient);
-    connectBranch<int>(tree, "isIsolated_GradientLoose",               &m_isIsolated_GradientLoose);
-    connectBranch<int>(tree, "isIsolated_FixedCutLoose",               &m_isIsolated_FixedCutLoose);
-    connectBranch<int>(tree, "isIsolated_FixedCutTight",               &m_isIsolated_FixedCutTight);
-    connectBranch<int>(tree, "isIsolated_FixedCutTightTrackOnly",      &m_isIsolated_FixedCutTightTrackOnly);
-    connectBranch<int>(tree, "isIsolated_UserDefinedFixEfficiency",    &m_isIsolated_UserDefinedFixEfficiency);
-    connectBranch<int>(tree, "isIsolated_UserDefinedCut",              &m_isIsolated_UserDefinedCut);
+    for (auto& isol : m_infoSwitch.m_isolWPs) {
+      if (!isol.empty() && isol != "NONE") {
+        tree->SetBranchStatus ( (m_name + "_isIsolated_" + isol).c_str() , 1);
+        tree->SetBranchAddress( (m_name + "_isIsolated_" + isol).c_str() , & (*m_isIsolated)[ isol ] );
+      }
+    }
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -257,60 +225,40 @@ void ElectronContainer::setTree(TTree *tree)
   }
 
   if ( m_infoSwitch.m_PID ) {
-    tree->SetBranchStatus (("n"+m_name+"_LHVeryLoose").c_str(),     1);
-    tree->SetBranchAddress(("n"+m_name+"_LHVeryLoose").c_str(),     &m_n_LHVeryLoose);
-    connectBranch<int>(tree, "LHVeryLoose",         &m_LHVeryLoose);
-
-    tree->SetBranchStatus (("n"+m_name+"_LHLoose").c_str(),     1);
-    tree->SetBranchAddress(("n"+m_name+"_LHLoose").c_str(),     &m_n_LHLoose);
-    connectBranch<int>(tree, "LHLoose",         &m_LHLoose);
-
-    tree->SetBranchStatus (("n"+m_name+"_LHLooseBL").c_str(),   1);
-    tree->SetBranchAddress(("n"+m_name+"_LHLooseBL").c_str(),   &m_n_LHLooseBL);
-    connectBranch<int>(tree, "LHLooseBL",         &m_LHLooseBL);
-
-    tree->SetBranchStatus (("n"+m_name+"_LHMedium").c_str(),      1);
-    tree->SetBranchAddress(("n"+m_name+"_LHMedium").c_str(),      &m_n_LHMedium);
-    connectBranch<int>(tree, "LHMedium",      &m_LHMedium);
-
-    tree->SetBranchStatus (("n"+m_name+"_LHTight").c_str(),      1);
-    tree->SetBranchAddress(("n"+m_name+"_LHTight").c_str(),      &m_n_LHTight);
-    connectBranch<int>(tree, "LHTight",       &m_LHTight);
-
-    tree->SetBranchStatus (("n"+m_name+"_IsEMLoose").c_str(),      1);
-    tree->SetBranchAddress(("n"+m_name+"_IsEMLoose").c_str(),      &m_n_IsEMLoose);
-    connectBranch<int>(tree, "IsEMLoose",     &m_IsEMLoose);
-
-    tree->SetBranchStatus (("n"+m_name+"_IsEMMedium").c_str(),      1);
-    tree->SetBranchAddress(("n"+m_name+"_IsEMMedium").c_str(),      &m_n_IsEMMedium);
-    connectBranch<int>(tree, "IsEMMedium",    &m_IsEMMedium);
-
-    tree->SetBranchStatus (("n"+m_name+"_IsEMTight").c_str(),      1);
-    tree->SetBranchAddress(("n"+m_name+"_IsEMTight").c_str(),      &m_n_IsEMTight);
-    connectBranch<int>(tree, "IsEMTight",     &m_IsEMTight);
+    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+      if (!PID.empty()) {
+        tree->SetBranchStatus ( (m_name + PID).c_str() , 1);
+        tree->SetBranchAddress( (m_name + PID).c_str() , & (*m_PID)[ PID ] );
+      }
+    }
   }
 
   if ( m_infoSwitch.m_effSF && m_mc ) {
-    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+    for (auto& PID : m_infoSwitch.m_PIDSFWPs) {
       tree->SetBranchStatus ( (m_name+"_PIDEff_SF_" + PID).c_str() , 1);
       tree->SetBranchAddress( (m_name+"_PIDEff_SF_" + PID).c_str() , & (*m_PIDEff_SF)[ PID ] );
 
       for (auto& isol : m_infoSwitch.m_isolWPs) {
         if(!isol.empty()) {
-          tree->SetBranchStatus ( (m_name+"_IsoEff_SF_" + PID + "_" + isol).c_str() , 1);
-          tree->SetBranchAddress( (m_name+"_IsoEff_SF_" + PID + "_" + isol).c_str() , & (*m_IsoEff_SF)[ PID+isol ] );
+          tree->SetBranchStatus ( (m_name+"_IsoEff_SF_" + PID + "_isol" + isol).c_str() , 1);
+          tree->SetBranchAddress( (m_name+"_IsoEff_SF_" + PID + "_isol" + isol).c_str() , & (*m_IsoEff_SF)[ PID+isol ] );
         }
         for (auto& trig : m_infoSwitch.m_trigWPs) {
-          tree->SetBranchStatus ( (m_name+"_TrigEff_SF_" + trig + "_" + PID + (!isol.empty() ? "_" + isol : "")).c_str() , 1 );
-          tree->SetBranchAddress( (m_name+"_TrigEff_SF_" + trig + "_" + PID + (!isol.empty() ? "_" + isol : "")).c_str() , & (*m_TrigEff_SF)[ trig+PID+isol ] );
+          tree->SetBranchStatus ( (m_name+"_TrigEff_SF_" + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "")).c_str() , 1 );
+          tree->SetBranchAddress( (m_name+"_TrigEff_SF_" + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "")).c_str() , & (*m_TrigEff_SF)[ trig+PID+isol ] );
 
-          tree->SetBranchStatus ( (m_name+"_TrigMCEff_"  + trig + "_" + PID + (!isol.empty() ? "_" + isol : "")).c_str() , 1 );
-          tree->SetBranchAddress( (m_name+"_TrigMCEff_"  + trig + "_" + PID + (!isol.empty() ? "_" + isol : "")).c_str() , & (*m_TrigMCEff) [ trig+PID+isol ] );
+          tree->SetBranchStatus ( (m_name+"_TrigMCEff_"  + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "")).c_str() , 1 );
+          tree->SetBranchAddress( (m_name+"_TrigMCEff_"  + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "")).c_str() , & (*m_TrigMCEff) [ trig+PID+isol ] );
         }
       }
     }
 
     connectBranch<std::vector<float> >(tree, "RecoEff_SF"  ,                &m_RecoEff_SF  );
+  }
+
+  if ( m_infoSwitch.m_recoparams ) {
+    connectBranch<int>(tree, "author",   &m_author);
+    connectBranch<int>(tree, "OQ",       &m_OQ);
   }
 
   if ( m_infoSwitch.m_trackparams ) {
@@ -337,6 +285,20 @@ void ElectronContainer::setTree(TTree *tree)
     connectBranch<float>(tree, "trkPixdEdX",    &m_trkPixdEdX);
   }
 
+  if ( m_infoSwitch.m_promptlepton ) {
+    connectBranch<float>(tree, "PromptLeptonInput_DL1mu",          &m_PromptLeptonInput_DL1mu);
+    connectBranch<float>(tree, "PromptLeptonInput_DRlj",           &m_PromptLeptonInput_DRlj);
+    connectBranch<float>(tree, "PromptLeptonInput_LepJetPtFrac",   &m_PromptLeptonInput_LepJetPtFrac);
+    connectBranch<float>(tree, "PromptLeptonInput_PtFrac",         &m_PromptLeptonInput_PtFrac);
+    connectBranch<float>(tree, "PromptLeptonInput_PtRel",          &m_PromptLeptonInput_PtRel);
+    connectBranch<int>  (tree, "PromptLeptonInput_TrackJetNTrack", &m_PromptLeptonInput_TrackJetNTrack);
+    connectBranch<float>(tree, "PromptLeptonInput_ip2",            &m_PromptLeptonInput_ip2);
+    connectBranch<float>(tree, "PromptLeptonInput_ip3",            &m_PromptLeptonInput_ip3);
+    connectBranch<float>(tree, "PromptLeptonInput_rnnip",          &m_PromptLeptonInput_rnnip);
+    connectBranch<int>  (tree, "PromptLeptonInput_sv1_jf_ntrkv",   &m_PromptLeptonInput_sv1_jf_ntrkv);
+    connectBranch<float>(tree, "PromptLeptonIso",                  &m_PromptLeptonIso);
+    connectBranch<float>(tree, "PromptLeptonVeto",                 &m_PromptLeptonVeto);
+  }
 
 }
 
@@ -346,6 +308,7 @@ void ElectronContainer::updateParticle(uint idx, Electron& elec)
 
   if ( m_infoSwitch.m_kinematic ) {
     elec.caloCluster_eta = m_caloCluster_eta -> at(idx);
+    elec.charge          = m_charge          -> at(idx);
   }
 
   // trigger
@@ -357,16 +320,11 @@ void ElectronContainer::updateParticle(uint idx, Electron& elec)
 
   // isolation
   if ( m_infoSwitch.m_isolation ) {
-    elec.isIsolated_LooseTrackOnly                =     m_isIsolated_LooseTrackOnly                  ->at(idx);
-    elec.isIsolated_Loose                         =     m_isIsolated_Loose                           ->at(idx);
-    elec.isIsolated_Tight                         =     m_isIsolated_Tight                           ->at(idx);
-    elec.isIsolated_Gradient                      =     m_isIsolated_Gradient                        ->at(idx);
-    elec.isIsolated_GradientLoose                 =     m_isIsolated_GradientLoose                   ->at(idx);
-    elec.isIsolated_FixedCutLoose                 =     m_isIsolated_FixedCutLoose                   ->at(idx);
-    elec.isIsolated_FixedCutTight                 =     m_isIsolated_FixedCutTight                   ->at(idx);
-    elec.isIsolated_FixedCutTightTrackOnly        =     m_isIsolated_FixedCutTightTrackOnly          ->at(idx);
-    elec.isIsolated_UserDefinedFixEfficiency      =     m_isIsolated_UserDefinedFixEfficiency        ->at(idx);
-    elec.isIsolated_UserDefinedCut                =     m_isIsolated_UserDefinedCut                  ->at(idx);
+    for (auto& isol : m_infoSwitch.m_isolWPs) {
+      if (!isol.empty() && isol != "NONE") {
+        elec.isIsolated[isol] = (*m_isIsolated)[ isol ].at(idx);
+      }
+    }
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -384,21 +342,18 @@ void ElectronContainer::updateParticle(uint idx, Electron& elec)
 
   // quality
   if ( m_infoSwitch.m_PID ) {
-    elec.LHVeryLoose   = m_LHVeryLoose->at(idx);
-    elec.LHLoose       = m_LHLoose    ->at(idx);
-    elec.LHLooseBL     = m_LHLooseBL  ->at(idx);
-    elec.LHMedium      = m_LHMedium   ->at(idx);
-    elec.LHTight       = m_LHTight    ->at(idx);
-    elec.IsEMLoose     = m_IsEMLoose  ->at(idx);
-    elec.IsEMMedium    = m_IsEMMedium ->at(idx);
-    elec.IsEMTight     = m_IsEMTight  ->at(idx);
+    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+      if (!PID.empty()) {
+        elec.PID[PID] = (*m_PID)[ PID ].at(idx);
+      }
+    }
   }
 
   // scale factors w/ sys
   // per object
   if ( m_infoSwitch.m_effSF && m_mc ) {
 
-    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+    for (auto& PID : m_infoSwitch.m_PIDSFWPs) {
       elec.PIDEff_SF[ PID ] = (*m_PIDEff_SF) [ PID ].at(idx);
       for (auto& iso : m_infoSwitch.m_isolWPs) {
         if(!iso.empty())
@@ -412,6 +367,12 @@ void ElectronContainer::updateParticle(uint idx, Electron& elec)
 
     elec.RecoEff_SF                               = m_RecoEff_SF                              ->at(idx);
 
+  }
+
+  // reco parameters
+  if ( m_infoSwitch.m_recoparams ) {
+    elec.author      = m_author     ->at(idx);
+    elec.OQ          = m_OQ         ->at(idx);
   }
 
   // track parameters
@@ -440,6 +401,22 @@ void ElectronContainer::updateParticle(uint idx, Electron& elec)
     elec.trkPixdEdX                 = m_trkPixdEdX                ->at(idx);         // not available in DC14
   }
 
+  // prompt lepton
+  if ( m_infoSwitch.m_promptlepton ) {
+    elec.PromptLeptonInput_DL1mu           = m_PromptLeptonInput_DL1mu           ->at(idx);
+    elec.PromptLeptonInput_DRlj            = m_PromptLeptonInput_DRlj            ->at(idx);
+    elec.PromptLeptonInput_LepJetPtFrac    = m_PromptLeptonInput_LepJetPtFrac    ->at(idx);
+    elec.PromptLeptonInput_PtFrac          = m_PromptLeptonInput_PtFrac          ->at(idx);
+    elec.PromptLeptonInput_PtRel           = m_PromptLeptonInput_PtRel           ->at(idx);
+    elec.PromptLeptonInput_TrackJetNTrack  = m_PromptLeptonInput_TrackJetNTrack  ->at(idx);
+    elec.PromptLeptonInput_ip2             = m_PromptLeptonInput_ip2             ->at(idx);
+    elec.PromptLeptonInput_ip3             = m_PromptLeptonInput_ip3             ->at(idx);
+    elec.PromptLeptonInput_rnnip           = m_PromptLeptonInput_rnnip           ->at(idx);
+    elec.PromptLeptonInput_sv1_jf_ntrkv    = m_PromptLeptonInput_sv1_jf_ntrkv    ->at(idx);
+    elec.PromptLeptonIso                   = m_PromptLeptonIso                   ->at(idx);
+    elec.PromptLeptonVeto                  = m_PromptLeptonVeto                  ->at(idx);
+  }
+
 }
 
 
@@ -449,6 +426,7 @@ void ElectronContainer::setBranches(TTree *tree)
 
   if ( m_infoSwitch.m_kinematic ) {
     setBranch<float>(tree,"caloCluster_eta", m_caloCluster_eta);
+    setBranch<float>(tree,"charge",          m_charge);
   }
 
   if ( m_infoSwitch.m_trigger ){
@@ -458,16 +436,11 @@ void ElectronContainer::setBranches(TTree *tree)
   }
 
   if ( m_infoSwitch.m_isolation ) {
-    setBranch<int>(tree, "isIsolated_LooseTrackOnly",              m_isIsolated_LooseTrackOnly);
-    setBranch<int>(tree, "isIsolated_Loose",                       m_isIsolated_Loose);
-    setBranch<int>(tree, "isIsolated_Tight",                       m_isIsolated_Tight);
-    setBranch<int>(tree, "isIsolated_Gradient",                    m_isIsolated_Gradient);
-    setBranch<int>(tree, "isIsolated_GradientLoose",               m_isIsolated_GradientLoose);
-    setBranch<int>(tree, "isIsolated_FixedCutLoose",               m_isIsolated_FixedCutLoose);
-    setBranch<int>(tree, "isIsolated_FixedCutTight",               m_isIsolated_FixedCutTight);
-    setBranch<int>(tree, "isIsolated_FixedCutTightTrackOnly",      m_isIsolated_FixedCutTightTrackOnly);
-    setBranch<int>(tree, "isIsolated_UserDefinedFixEfficiency",    m_isIsolated_UserDefinedFixEfficiency);
-    setBranch<int>(tree, "isIsolated_UserDefinedCut",              m_isIsolated_UserDefinedCut);
+    for (auto& isol : m_infoSwitch.m_isolWPs) {
+      if (!isol.empty() && isol != "NONE") {
+        setBranch<int>(tree, "isIsolated_" + isol, &(*m_isIsolated)[isol]);
+      }
+    }
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -484,45 +457,32 @@ void ElectronContainer::setBranches(TTree *tree)
   }
 
   if ( m_infoSwitch.m_PID ) {
-    tree->Branch(("n"+m_name+"_LHVeryLoose").c_str(),      &m_n_LHVeryLoose);
-    setBranch<int>(tree, "LHVeryLoose",         m_LHVeryLoose);
-
-    tree->Branch(("n"+m_name+"_LHLoose").c_str(),      &m_n_LHLoose);
-    setBranch<int>(tree, "LHLoose",         m_LHLoose);
-
-    tree->Branch(("n"+m_name+"_LHLooseBL").c_str(),      &m_n_LHLooseBL);
-    setBranch<int>(tree, "LHLooseBL",         m_LHLooseBL);
-
-    tree->Branch(("n"+m_name+"_LHMedium").c_str(),      &m_n_LHMedium);
-    setBranch<int>(tree, "LHMedium",      m_LHMedium);
-
-    tree->Branch(("n"+m_name+"_LHTight").c_str(),      &m_n_LHTight);
-    setBranch<int>(tree, "LHTight",       m_LHTight);
-
-    tree->Branch(("n"+m_name+"_IsEMLoose").c_str(),      &m_n_IsEMLoose);
-    setBranch<int>(tree, "IsEMLoose",     m_IsEMLoose);
-
-    tree->Branch(("n"+m_name+"_IsEMMedium").c_str(),      &m_n_IsEMMedium);
-    setBranch<int>(tree, "IsEMMedium",    m_IsEMMedium);
-
-    tree->Branch(("n"+m_name+"_IsEMTight").c_str(),      &m_n_IsEMTight);
-    setBranch<int>(tree, "IsEMTight",     m_IsEMTight);
+    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+      if (!PID.empty()) {
+        setBranch<int>(tree, PID, &(*m_PID)[PID]);
+      }
+    }
   }
 
   if ( m_infoSwitch.m_effSF && m_mc ) {
-    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+    for (auto& PID : m_infoSwitch.m_PIDSFWPs) {
       tree->Branch( (m_name+"_PIDEff_SF_"  + PID).c_str() , & (*m_PIDEff_SF)[ PID ] );
       for (auto& isol : m_infoSwitch.m_isolWPs) {
         if(!isol.empty())
-          tree->Branch( (m_name+"_IsoEff_SF_"  + PID + isol).c_str() , & (*m_IsoEff_SF)[ PID+isol ] );
+          tree->Branch( (m_name+"_IsoEff_SF_"  + PID + "_isol" + isol).c_str() , & (*m_IsoEff_SF)[ PID+isol ] );
         for (auto& trig : m_infoSwitch.m_trigWPs) {
-          tree->Branch( (m_name+"_TrigEff_SF_" + trig + "_" + PID + (!isol.empty() ? "_" + isol : "")).c_str() , & (*m_TrigEff_SF)[ trig+PID+isol ] );
-          tree->Branch( (m_name+"_TrigMCEff_"  + trig + "_" + PID + (!isol.empty() ? "_" + isol : "")).c_str() , & (*m_TrigMCEff) [ trig+PID+isol ] );
+          tree->Branch( (m_name+"_TrigEff_SF_" + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "")).c_str() , & (*m_TrigEff_SF)[ trig+PID+isol ] );
+          tree->Branch( (m_name+"_TrigMCEff_"  + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "")).c_str() , & (*m_TrigMCEff) [ trig+PID+isol ] );
         }
       }
     }
 
     setBranch<vector<float> >(tree, "RecoEff_SF"  ,                m_RecoEff_SF  );
+  }
+
+  if ( m_infoSwitch.m_recoparams ) {
+    setBranch<int>(tree, "author",   m_author);
+    setBranch<int>(tree, "OQ",       m_OQ);
   }
 
   if ( m_infoSwitch.m_trackparams ) {
@@ -549,6 +509,21 @@ void ElectronContainer::setBranches(TTree *tree)
     setBranch<float>(tree, "trkPixdEdX",    m_trkPixdEdX);
   }
 
+  if ( m_infoSwitch.m_promptlepton ) {
+    setBranch<float>(tree, "PromptLeptonInput_DL1mu",           m_PromptLeptonInput_DL1mu);
+    setBranch<float>(tree, "PromptLeptonInput_DRlj",            m_PromptLeptonInput_DRlj);
+    setBranch<float>(tree, "PromptLeptonInput_LepJetPtFrac",    m_PromptLeptonInput_LepJetPtFrac);
+    setBranch<float>(tree, "PromptLeptonInput_PtFrac",          m_PromptLeptonInput_PtFrac);
+    setBranch<float>(tree, "PromptLeptonInput_PtRel",           m_PromptLeptonInput_PtRel);
+    setBranch<int>  (tree, "PromptLeptonInput_TrackJetNTrack",  m_PromptLeptonInput_TrackJetNTrack);
+    setBranch<float>(tree, "PromptLeptonInput_ip2",             m_PromptLeptonInput_ip2);
+    setBranch<float>(tree, "PromptLeptonInput_ip3",             m_PromptLeptonInput_ip3);
+    setBranch<float>(tree, "PromptLeptonInput_rnnip",           m_PromptLeptonInput_rnnip);
+    setBranch<int>  (tree, "PromptLeptonInput_sv1_jf_ntrkv",    m_PromptLeptonInput_sv1_jf_ntrkv);
+    setBranch<float>(tree, "PromptLeptonIso",                   m_PromptLeptonIso);
+    setBranch<float>(tree, "PromptLeptonVeto",                  m_PromptLeptonVeto);
+  }
+
   return;
 }
 
@@ -561,6 +536,7 @@ void ElectronContainer::clear()
 
   if ( m_infoSwitch.m_kinematic ) {
     m_caloCluster_eta ->clear();
+    m_charge          ->clear();
   }
 
   if ( m_infoSwitch.m_trigger ){
@@ -570,16 +546,9 @@ void ElectronContainer::clear()
   }
 
   if ( m_infoSwitch.m_isolation ) {
-    m_isIsolated_LooseTrackOnly              ->clear();
-    m_isIsolated_Loose                       ->clear();
-    m_isIsolated_Tight                       ->clear();
-    m_isIsolated_Gradient                    ->clear();
-    m_isIsolated_GradientLoose               ->clear();
-    m_isIsolated_FixedCutLoose               ->clear();
-    m_isIsolated_FixedCutTight               ->clear();
-    m_isIsolated_FixedCutTightTrackOnly      ->clear();
-    m_isIsolated_UserDefinedFixEfficiency    ->clear();
-    m_isIsolated_UserDefinedCut              ->clear();
+    for (auto& isol : m_infoSwitch.m_isolWPs) {
+      (*m_isIsolated)[ isol ].clear();
+    }
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -596,35 +565,14 @@ void ElectronContainer::clear()
   }
 
   if ( m_infoSwitch.m_PID ) {
-    m_n_LHVeryLoose = 0;
-    m_LHVeryLoose   -> clear();
-
-    m_n_LHLoose = 0;
-    m_LHLoose   -> clear();
-
-    m_n_LHLooseBL = 0;
-    m_LHLooseBL   -> clear();
-
-    m_n_LHMedium = 0;
-    m_LHMedium   -> clear();
-
-    m_n_LHTight = 0;
-    m_LHTight   -> clear();
-
-    m_n_IsEMLoose = 0;
-    m_IsEMLoose   -> clear();
-
-    m_n_IsEMMedium = 0;
-    m_IsEMMedium   -> clear();
-
-    m_n_IsEMTight = 0;
-    m_IsEMTight   -> clear();
-
+    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+      (*m_PID)[ PID ].clear();
+    }
   }
 
   if ( m_infoSwitch.m_effSF && m_mc ) {
 
-    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+    for (auto& PID : m_infoSwitch.m_PIDSFWPs) {
       (*m_PIDEff_SF)[ PID ].clear();
       for (auto& isol : m_infoSwitch.m_isolWPs) {
         if(!isol.empty())
@@ -638,6 +586,11 @@ void ElectronContainer::clear()
 
     m_RecoEff_SF->clear();
 
+  }
+
+  if ( m_infoSwitch.m_recoparams ) {
+    m_author    -> clear();
+    m_OQ        -> clear();
   }
 
   if ( m_infoSwitch.m_trackparams ) {
@@ -664,6 +617,21 @@ void ElectronContainer::clear()
     m_trkPixdEdX                 -> clear();
   }
 
+  if ( m_infoSwitch.m_promptlepton ) {
+    m_PromptLeptonInput_DL1mu            -> clear();
+    m_PromptLeptonInput_DRlj             -> clear();
+    m_PromptLeptonInput_LepJetPtFrac     -> clear();
+    m_PromptLeptonInput_PtFrac           -> clear();
+    m_PromptLeptonInput_PtRel            -> clear();
+    m_PromptLeptonInput_TrackJetNTrack   -> clear();
+    m_PromptLeptonInput_ip2              -> clear();
+    m_PromptLeptonInput_ip3              -> clear();
+    m_PromptLeptonInput_rnnip            -> clear();
+    m_PromptLeptonInput_sv1_jf_ntrkv     -> clear();
+    m_PromptLeptonIso                    -> clear();
+    m_PromptLeptonVeto                   -> clear();
+  }
+
 }
 
 
@@ -683,6 +651,8 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
   if ( m_infoSwitch.m_kinematic ) {
     float calo_eta   = ( elec->caloCluster() ) ? elec->caloCluster()->etaBE(2) : -999.0;
     m_caloCluster_eta->push_back( calo_eta );
+
+    m_charge->push_back( elec->charge() );
   }
 
   if ( m_infoSwitch.m_trigger ) {
@@ -714,36 +684,15 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
   }
 
   if ( m_infoSwitch.m_isolation ) {
+    static std::map< std::string, SG::AuxElement::Accessor<char> > accIsol;
 
-    static SG::AuxElement::Accessor<char> isIsoLooseTrackOnlyAcc ("isIsolated_LooseTrackOnly");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoLooseTrackOnlyAcc, m_isIsolated_LooseTrackOnly, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoLooseAcc ("isIsolated_Loose");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoLooseAcc, m_isIsolated_Loose, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoTightAcc ("isIsolated_Tight");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoTightAcc, m_isIsolated_Tight, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoGradientAcc ("isIsolated_Gradient");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoGradientAcc, m_isIsolated_Gradient, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoGradientLooseAcc ("isIsolated_GradientLoose");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoGradientLooseAcc, m_isIsolated_GradientLoose, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoFixedCutLooseAcc ("isIsolated_FixedCutLoose");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoFixedCutLooseAcc, m_isIsolated_FixedCutLoose, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoFixedCutTightAcc ("isIsolated_FixedCutTight");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoFixedCutTightAcc, m_isIsolated_FixedCutTight, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoFixedCutTightTrackOnlyAcc ("isIsolated_FixedCutTightTrackOnly");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoFixedCutTightTrackOnlyAcc, m_isIsolated_FixedCutTightTrackOnly, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoUserDefinedFixEfficiencyAcc ("isIsolated_UserDefinedFixEfficiency");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoUserDefinedFixEfficiencyAcc, m_isIsolated_UserDefinedFixEfficiency, -1);
-
-    static SG::AuxElement::Accessor<char> isIsoUserDefinedCutAcc ("isIsolated_UserDefinedCut");
-    safeFill<char, int, xAOD::Electron>(elec, isIsoUserDefinedCutAcc, m_isIsolated_UserDefinedCut, -1);
+    for (auto& isol : m_infoSwitch.m_isolWPs) {
+      if (!isol.empty() && isol != "NONE") {
+        std::string isolWP = "isIsolated_" + isol;
+        accIsol.insert( std::pair<std::string, SG::AuxElement::Accessor<char> > ( isol , SG::AuxElement::Accessor<char>( isolWP ) ) );
+        safeFill<char, int, xAOD::Electron>( elec, accIsol.at( isol ), &m_isIsolated->at( isol ), -1 );
+      }
+    }
   }
 
   if ( m_infoSwitch.m_isolationKinematics ) {
@@ -760,56 +709,29 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
   }
 
   if ( m_infoSwitch.m_PID ) {
+    static std::map< std::string, SG::AuxElement::Accessor<char> > accPID;
+    static SG::AuxElement::Accessor<bool> accBLayer( "bLayerPass" );
 
-    static SG::AuxElement::Accessor<char> LHVeryLooseAcc ("LHVeryLoose");
-    if ( LHVeryLooseAcc.isAvailable( *elec ) ) {
-      m_LHVeryLoose->push_back( LHVeryLooseAcc( *elec ) );
-      if ( LHVeryLooseAcc( *elec ) == 1 ) { ++m_n_LHVeryLoose; }
-    }  else {  m_LHVeryLoose->push_back( -1 ); }
+    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+      if (!PID.empty()) {
+        if (PID == "LHLooseBL") {
+          accPID.insert( std::pair<std::string, SG::AuxElement::Accessor<char> > ( PID , SG::AuxElement::Accessor<char>( "LHLoose" ) ) );
+          if ( accPID.at( PID ).isAvailable( *elec ) && accBLayer.isAvailable( *elec ) ) {
+            m_PID->at( PID ).push_back( accBLayer( *elec ) == 1 && (accPID.at( PID ))( *elec ) == 1 );
+          } else {
+            m_PID->at( PID ).push_back( -1 );
+          }
+        } else {
+          accPID.insert( std::pair<std::string, SG::AuxElement::Accessor<char> > ( PID , SG::AuxElement::Accessor<char>( PID ) ) );
+          safeFill<char, int, xAOD::Electron>( elec, accPID.at( PID ), &m_PID->at( PID ), -1 );
+        }
+      }
+    }
+  }
 
-    static SG::AuxElement::Accessor<char> LHLooseAcc ("LHLoose");
-    if ( LHLooseAcc.isAvailable( *elec ) ) {
-      m_LHLoose->push_back( LHLooseAcc( *elec ) );
-      if ( LHLooseAcc( *elec ) == 1 ) { ++m_n_LHLoose; }
-    }  else {  m_LHLoose->push_back( -1 ); }
-
-    static SG::AuxElement::Accessor<char> LHLooseBLAcc ("LHLooseBL");
-    if ( LHLooseBLAcc.isAvailable( *elec ) ) {
-      m_LHLooseBL->push_back( LHLooseBLAcc( *elec ) );
-      if ( LHLooseBLAcc( *elec ) == 1 ) { ++m_n_LHLooseBL; }
-    }  else { m_LHLooseBL->push_back( -1 ); }
-
-    static SG::AuxElement::Accessor<char> LHMediumAcc ("LHMedium");
-    if ( LHMediumAcc.isAvailable( *elec ) ) {
-      m_LHMedium->push_back( LHMediumAcc( *elec ) );
-      if ( LHMediumAcc( *elec ) == 1 ) { ++m_n_LHMedium; }
-    }  else { m_LHMedium->push_back( -1 ); }
-
-    static SG::AuxElement::Accessor<char> LHTightAcc ("LHTight");
-    if ( LHTightAcc.isAvailable( *elec ) ) {
-      m_LHTight->push_back( LHTightAcc( *elec ) );
-      if ( LHTightAcc( *elec ) == 1 ) { ++m_n_LHTight; }
-    } else { m_LHTight->push_back( -1 ); }
-
-
-    static SG::AuxElement::Accessor<char> EMLooseAcc ("IsEMLoose");
-    if ( EMLooseAcc.isAvailable( *elec ) ) {
-      m_IsEMLoose->push_back( EMLooseAcc( *elec ) );
-      if ( EMLooseAcc( *elec ) == 1 ) { ++m_n_IsEMLoose; }
-    } else { m_IsEMLoose->push_back( -1 ); }
-
-    static SG::AuxElement::Accessor<char> EMMediumAcc ("IsEMMedium");
-    if ( EMMediumAcc.isAvailable( *elec ) ) {
-      m_IsEMMedium->push_back( EMMediumAcc( *elec ) );
-      if ( EMMediumAcc( *elec ) == 1 ) { ++m_n_IsEMMedium; }
-    } else { m_IsEMMedium->push_back( -1 ); }
-
-    static SG::AuxElement::Accessor<char> EMTightAcc ("IsEMTight");
-    if ( EMTightAcc.isAvailable( *elec ) ) {
-      m_IsEMTight->push_back( EMTightAcc( *elec ) );
-      if ( EMTightAcc( *elec ) == 1 ) { ++m_n_IsEMTight; }
-    } else { m_IsEMTight->push_back( -1 ); }
-
+  if ( m_infoSwitch.m_recoparams ) {
+    m_author -> push_back(elec->author());
+    m_OQ     -> push_back(elec->isGoodOQ(xAOD::EgammaParameters::BADCLUSELECTRON));
   }
 
   if ( m_infoSwitch.m_trackparams ) {
@@ -825,9 +747,13 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
       m_trkd0->push_back( trk->d0() );
 
       static SG::AuxElement::Accessor<float> d0SigAcc ("d0sig");
-      float d0_significance =  ( d0SigAcc.isAvailable( *elec ) ) ? fabs( d0SigAcc( *elec ) ) : -1.0;
+      float d0_significance =  ( d0SigAcc.isAvailable( *elec ) ) ? d0SigAcc( *elec ) : -1.0;
       m_trkd0sig->push_back( d0_significance );
-      m_trkz0->push_back( trk->z0()  - ( primaryVertex->z() - trk->vz() ) );
+      if (primaryVertex)
+        m_trkz0->push_back( trk->z0()  - ( primaryVertex->z() - trk->vz() ) );
+      else
+        m_trkz0->push_back( -999.0 );
+
 
       static SG::AuxElement::Accessor<float> z0sinthetaAcc("z0sintheta");
       float z0sintheta =  ( z0sinthetaAcc.isAvailable( *elec ) ) ? z0sinthetaAcc( *elec ) : -999.0;
@@ -841,7 +767,7 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
     } else {
 
       m_trkd0->push_back( -999.0 );
-      m_trkd0sig->push_back( -1.0 );
+      m_trkd0sig->push_back( -999.0 );
       m_trkz0->push_back( -999.0 );
       m_trkz0sintheta->push_back( -999.0 );
       m_trkphi0->push_back( -999.0 );
@@ -877,17 +803,45 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
     m_trkPixdEdX->push_back( pixdEdX );
   }
 
+  if ( m_infoSwitch.m_promptlepton ) {
+    SG::AuxElement::ConstAccessor<float> acc_DL1mu          ("PromptLeptonInput_DL1mu");
+    SG::AuxElement::ConstAccessor<float> acc_DRlj           ("PromptLeptonInput_DRlj");
+    SG::AuxElement::ConstAccessor<float> acc_LepJetPtFrac   ("PromptLeptonInput_LepJetPtFrac");
+    SG::AuxElement::ConstAccessor<float> acc_PtFrac         ("PromptLeptonInput_PtFrac");
+    SG::AuxElement::ConstAccessor<float> acc_PtRel          ("PromptLeptonInput_PtRel");
+    SG::AuxElement::ConstAccessor<short> acc_TrackJetNTrack ("PromptLeptonInput_TrackJetNTrack");
+    SG::AuxElement::ConstAccessor<float> acc_ip2            ("PromptLeptonInput_ip2");
+    SG::AuxElement::ConstAccessor<float> acc_ip3            ("PromptLeptonInput_ip3");
+    SG::AuxElement::ConstAccessor<float> acc_rnnip          ("PromptLeptonInput_rnnip");
+    SG::AuxElement::ConstAccessor<short> acc_sv1_jf_ntrkv   ("PromptLeptonInput_sv1_jf_ntrkv");
+    SG::AuxElement::ConstAccessor<float> acc_Iso            ("PromptLeptonIso");
+    SG::AuxElement::ConstAccessor<float> acc_Veto           ("PromptLeptonVeto");
+
+    m_PromptLeptonInput_DL1mu          ->push_back( acc_DL1mu          .isAvailable(*elec) ? acc_DL1mu(*elec)          : -100);
+    m_PromptLeptonInput_DRlj           ->push_back( acc_DRlj           .isAvailable(*elec) ? acc_DRlj(*elec)           : -100);
+    m_PromptLeptonInput_LepJetPtFrac   ->push_back( acc_LepJetPtFrac   .isAvailable(*elec) ? acc_LepJetPtFrac(*elec)   : -100);
+    m_PromptLeptonInput_PtFrac         ->push_back( acc_PtFrac         .isAvailable(*elec) ? acc_PtFrac(*elec)         : -100);
+    m_PromptLeptonInput_PtRel          ->push_back( acc_PtRel          .isAvailable(*elec) ? acc_PtRel(*elec)          : -100);
+    m_PromptLeptonInput_TrackJetNTrack ->push_back( acc_TrackJetNTrack .isAvailable(*elec) ? acc_TrackJetNTrack(*elec) : -100);
+    m_PromptLeptonInput_ip2            ->push_back( acc_ip2            .isAvailable(*elec) ? acc_ip2(*elec)            : -100);
+    m_PromptLeptonInput_ip3            ->push_back( acc_ip3            .isAvailable(*elec) ? acc_ip3(*elec)            : -100);
+    m_PromptLeptonInput_rnnip          ->push_back( acc_rnnip          .isAvailable(*elec) ? acc_rnnip(*elec)          : -100);
+    m_PromptLeptonInput_sv1_jf_ntrkv   ->push_back( acc_sv1_jf_ntrkv   .isAvailable(*elec) ? acc_sv1_jf_ntrkv(*elec)   : -100);
+    m_PromptLeptonIso                  ->push_back( acc_Iso            .isAvailable(*elec) ? acc_Iso(*elec)            : -100);
+    m_PromptLeptonVeto                 ->push_back( acc_Veto           .isAvailable(*elec) ? acc_Veto(*elec)           : -100);
+  }
+
   if ( m_infoSwitch.m_effSF && m_mc ) {
 
-    std::vector<float> junkSF(1,1.0);
-    std::vector<float> junkEff(1,0.0);
+    std::vector<float> junkSF(1,-1.0);
+    std::vector<float> junkEff(1,-1.0);
 
     static std::map< std::string, SG::AuxElement::Accessor< std::vector< float > > > accPIDSF;
     static std::map< std::string, SG::AuxElement::Accessor< std::vector< float > > > accIsoSF;
     static std::map< std::string, SG::AuxElement::Accessor< std::vector< float > > > accTrigSF;
     static std::map< std::string, SG::AuxElement::Accessor< std::vector< float > > > accTrigEFF;
 
-    for (auto& PID : m_infoSwitch.m_PIDWPs) {
+    for (auto& PID : m_infoSwitch.m_PIDSFWPs) {
       std::string PIDSF = "ElPIDEff_SF_syst_" + PID;
       accPIDSF.insert( std::pair<std::string, SG::AuxElement::Accessor< std::vector< float > > > ( PID , SG::AuxElement::Accessor< std::vector< float > >( PIDSF ) ) );
       safeSFVecFill<float, xAOD::Electron>( elec, accPIDSF.at( PID ), &m_PIDEff_SF->at( PID ), junkSF );
@@ -895,18 +849,18 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
       for (auto& isol : m_infoSwitch.m_isolWPs) {
 
         if(!isol.empty()) {
-          std::string IsoSF = "ElIsoEff_SF_syst_" + PID + "_" + isol;
+          std::string IsoSF = "ElIsoEff_SF_syst_" + PID + "_isol" + isol;
           accIsoSF.insert( std::pair<std::string, SG::AuxElement::Accessor< std::vector< float > > > ( PID+isol , SG::AuxElement::Accessor< std::vector< float > >( IsoSF ) ) );
           safeSFVecFill<float, xAOD::Electron>( elec, accIsoSF.at( PID+isol ), &m_IsoEff_SF->at( PID+isol ), junkSF );
         }
 
         for (auto& trig : m_infoSwitch.m_trigWPs) {
 
-          std::string TrigSF = "ElTrigEff_SF_syst_" + trig + "_" + PID + (!isol.empty() ? "_" + isol : "");
+          std::string TrigSF = "ElTrigEff_SF_syst_" + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "");
           accTrigSF.insert( std::pair<std::string, SG::AuxElement::Accessor< std::vector< float > > > ( trig+PID+isol , SG::AuxElement::Accessor< std::vector< float > >( TrigSF ) ) );
           safeSFVecFill<float, xAOD::Electron>( elec, accTrigSF.at( trig+PID+isol ), &m_TrigEff_SF->at( trig+PID+isol ), junkSF );
 
-          std::string TrigEFF = "ElTrigMCEff_syst_" + trig + "_" + PID + (!isol.empty() ? "_" + isol : "");
+          std::string TrigEFF = "ElTrigMCEff_syst_" + trig + "_" + PID + (!isol.empty() ? "_isol" + isol : "");
           accTrigEFF.insert( std::pair<std::string, SG::AuxElement::Accessor< std::vector< float > > > ( trig+PID+isol , SG::AuxElement::Accessor< std::vector< float > >( TrigEFF ) ) );
           safeSFVecFill<float, xAOD::Electron>( elec, accTrigEFF.at( trig+PID+isol ), &m_TrigMCEff->at( trig+PID+isol ), junkSF );
 
@@ -915,7 +869,7 @@ void ElectronContainer::FillElectron( const xAOD::IParticle* particle, const xAO
       }
     }
 
-   static SG::AuxElement::Accessor< std::vector< float > > accRecoSF("ElRecoEff_SF_syst");
+   static SG::AuxElement::Accessor< std::vector< float > > accRecoSF("ElRecoEff_SF_syst_Reconstruction");
    safeSFVecFill<float, xAOD::Electron>( elec, accRecoSF, m_RecoEff_SF, junkSF );
  }
 
