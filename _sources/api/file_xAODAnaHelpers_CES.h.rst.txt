@@ -1,0 +1,68 @@
+
+.. _file_xAODAnaHelpers_CES.h:
+
+File CES.h
+==========
+
+|exhale_lsh| :ref:`Parent directory <dir_xAODAnaHelpers>` (``xAODAnaHelpers``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. contents:: Contents
+   :local:
+   :backlinks: none
+
+Definition (``xAODAnaHelpers/CES.h``)
+-------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_xAODAnaHelpers_CES.h.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``JetRecTools/JetConstituentModifierBase.h``
+
+- ``TRandom3.h``
+
+- ``fastjet/ClusterSequenceArea.hh``
+
+- ``fastjet/PseudoJet.hh``
+
+- ``fastjet/Selector.hh``
+
+- ``string``
+
+- ``xAODBase/IParticleContainer.h``
+
+- ``xAODCaloEvent/CaloCluster.h``
+
+- ``xAODCaloEvent/CaloClusterContainer.h``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_Root_CES.cxx`
+
+- :ref:`file_Root_ClusterUncertaintyTool.cxx`
+
+
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classClusterEnergyScale`
+

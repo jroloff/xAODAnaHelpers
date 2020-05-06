@@ -1,0 +1,25 @@
+.. _exhale_class_classClusterUncertaintyTool:
+
+Class ClusterUncertaintyTool
+============================
+
+- Defined in :ref:`file_xAODAnaHelpers_ClusterUncertaintyTool.h`
+
+
+Inheritance Relationships
+-------------------------
+
+Base Type
+*********
+
+- ``public xAH::Algorithm`` (:ref:`exhale_class_classxAH_1_1Algorithm`)
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: ClusterUncertaintyTool
+   :members:
+   :protected-members:
+   :undoc-members:

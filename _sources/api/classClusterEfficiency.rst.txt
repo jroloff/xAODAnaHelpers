@@ -1,0 +1,25 @@
+.. _exhale_class_classClusterEfficiency:
+
+Class ClusterEfficiency
+=======================
+
+- Defined in :ref:`file_xAODAnaHelpers_CE.h`
+
+
+Inheritance Relationships
+-------------------------
+
+Base Type
+*********
+
+- ``public JetConstituentModifierBase``
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: ClusterEfficiency
+   :members:
+   :protected-members:
+   :undoc-members:

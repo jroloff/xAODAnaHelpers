@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Program Listing for File JetMaker.h &mdash; xAODAnaHelpers 2cebf34 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script type="text/javascript" src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js"></script>
+        <script type="text/javascript" src="../_static/collapsible-lists/js/apply-collapsible-lists.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/collapsible-lists/css/tree_view.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> xAODAnaHelpers
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2cebf34
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../Intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Installing.html">Installing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../UsingUs.html">xAH_run.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Algorithms.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Community.html">Community</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQs.html">xAH FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">Doxygen API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">xAODAnaHelpers</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Program Listing for File JetMaker.h</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/program_listing_file_xAODAnaHelpers_JetMaker.h.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="program-listing-for-file-jetmaker-h">
+<span id="program-listing-file-xaodanahelpers-jetmaker-h"></span><h1>Program Listing for File JetMaker.h<a class="headerlink" href="#program-listing-for-file-jetmaker-h" title="Permalink to this headline">¶</a></h1>
+<p>↰ <a class="reference internal" href="file_xAODAnaHelpers_JetMaker.h.html#file-xaodanahelpers-jetmaker-h"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">xAODAnaHelpers/JetMaker.h</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#ifndef xAODAnaHelpers_JetMaker_H</span>
+<span class="cp">#define xAODAnaHelpers_JetMaker_H</span>
+
+<span class="c1">// making it more like a tool</span>
+<span class="cp">#include</span> <span class="cpf">&quot;AsgTools/AsgTool.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;AsgTools/AnaToolHandle.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetInterface/IJetGroomer.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetInterface/IJetFromPseudojet.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetFromPseudojet.h&quot;</span><span class="cp"></span>
+
+<span class="c1">//#include &quot;fastjet/contrib/SoftDrop.hh&quot;</span>
+<span class="cp">#include</span> <span class="cpf">&quot;fastjet/PseudoJet.hh&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;fastjet/JetDefinition.hh&quot;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&quot;xAODCaloEvent/CaloClusterContainer.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODJet/JetContainer.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetInterface/IJetExecuteTool.h&quot;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;EventLoop/Algorithm.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetRecTool.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/PseudoJetGetter.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetToolRunner.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/PseudoJetGetter.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODRootAccess/Init.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetInterface/IJetModifier.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetInterface/IJetExecuteTool.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/PseudoJetGetter.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetFromPseudojet.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetFinder.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetSplitter.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetRecTool.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetDumper.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;JetRec/JetToolRunner.h&quot;</span><span class="cp"></span>
+
+
+<span class="c1">// algorithm wrapper</span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODAnaHelpers/Algorithm.h&quot;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;map&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;memory&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;vector&gt;</span><span class="cp"></span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
+
+
+
+<span class="k">class</span> <span class="nc">JetMaker</span> <span class="o">:</span> <span class="k">public</span> <span class="n">xAH</span><span class="o">::</span><span class="n">Algorithm</span><span class="p">{</span>
+    <span class="k">public</span><span class="o">:</span>
+
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_inContainerName</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_outContainerName</span><span class="p">;</span>
+
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_jetAlgo</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_outputAlgo</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">m_setAFII</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_calibConfigFullSim</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_calibConfigAFII</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_calibConfigData</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_calibConfig</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_calibSequence</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">m_zcut</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">m_ZCut</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">m_beta</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">m_Beta</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">m_jetR</span><span class="p">;</span>
+    <span class="n">fastjet</span><span class="o">::</span><span class="n">JetAlgorithm</span> <span class="n">m_jetalg</span><span class="p">;</span>
+  <span class="n">xAOD</span><span class="o">::</span><span class="n">TEvent</span> <span class="o">*</span><span class="n">m_event</span><span class="p">;</span>
+  <span class="n">xAOD</span><span class="o">::</span><span class="n">TStore</span> <span class="o">*</span><span class="n">m_store</span><span class="p">;</span>
+
+  <span class="n">ToolHandleArray</span><span class="o">&lt;</span><span class="n">IPseudoJetGetter</span><span class="o">&gt;</span> <span class="n">hgets</span><span class="p">;</span>
+  <span class="n">ToolHandleArray</span><span class="o">&lt;</span><span class="n">IJetExecuteTool</span><span class="o">&gt;</span> <span class="n">hrecs</span><span class="p">;</span>
+  <span class="c1">//PseudoJetGetter* plcget; //!</span>
+  <span class="n">JetToolRunner</span> <span class="o">*</span> <span class="n">jrun</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Tree *myTree; //!</span>
+  <span class="c1">// TH1 *myHist; //!</span>
+  <span class="kt">bool</span> <span class="n">SkipNegativeEnergy</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">Label</span><span class="p">;</span>
+    <span class="kt">float</span> <span class="n">JetRadius</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
+  <span class="kt">float</span> <span class="n">PtMin</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">JetAlgorithm</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">InputType</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">InputLabel</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">InputClusters</span> <span class="o">=</span> <span class="s">&quot;CaloCalTopoCluster&quot;</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">OutputContainer</span> <span class="o">=</span> <span class="s">&quot;MyAntiKt10Jets&quot;</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">m_PseudoJetGetter</span><span class="p">;</span>
+  <span class="n">TString</span> <span class="n">ClusterOutputContainer</span><span class="p">;</span>
+
+  <span class="k">private</span><span class="o">:</span>
+
+        <span class="n">vector</span><span class="o">&lt;</span><span class="n">fastjet</span><span class="o">::</span><span class="n">PseudoJet</span><span class="o">&gt;</span> <span class="n">m_clusters</span><span class="p">;</span>
+      <span class="k">const</span> <span class="n">xAOD</span><span class="o">::</span><span class="n">CaloClusterContainer</span> <span class="o">*</span><span class="n">m_clust</span><span class="p">;</span>
+      <span class="k">const</span> <span class="n">xAOD</span><span class="o">::</span><span class="n">JetContainer</span> <span class="o">*</span><span class="n">m_jets</span><span class="p">;</span>
+<span class="c1">//      JetFromPseudojet m_bld;//!</span>
+
+
+
+
+  <span class="cm">/* Properties */</span>
+    <span class="c1">// input jet container to use as a constituent proxy</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_inputClusterContainer</span><span class="p">;</span>
+    <span class="c1">// output jet container to store reclustered jets</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">m_outputJetContainer</span><span class="p">;</span>
+
+        <span class="kt">double</span> <span class="n">m_p</span><span class="p">;</span>
+        <span class="kt">double</span> <span class="n">m_mu</span><span class="p">;</span>
+
+  <span class="kt">int</span> <span class="n">m_numEvent</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">m_numObject</span><span class="p">;</span>
+
+  <span class="kt">bool</span> <span class="n">m_isMC</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">m_isFullSim</span><span class="p">;</span>
+
+    <span class="k">public</span><span class="o">:</span>
+    <span class="n">JetMaker</span> <span class="p">();</span>
+    <span class="c1">//JetMaker (std::string className = &quot;JetMaker&quot;, fastjet::JetAlgorithm fj_jetalg = fastjet::cambridge_algorithm, float jet_radius = 1.2, double beta = 1., double zcut = 0.1);</span>
+
+  <span class="c1">// these are the functions inherited from Algorithm</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">setupJob</span> <span class="p">(</span><span class="n">EL</span><span class="o">::</span><span class="n">Job</span><span class="o">&amp;</span> <span class="n">job</span><span class="p">);</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">fileExecute</span> <span class="p">();</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">histInitialize</span> <span class="p">();</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">changeInput</span> <span class="p">(</span><span class="kt">bool</span> <span class="n">firstFile</span><span class="p">);</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">initialize</span> <span class="p">();</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">execute</span> <span class="p">();</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">postExecute</span> <span class="p">();</span>
+  <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">finalize</span> <span class="p">();</span>
+    <span class="k">virtual</span> <span class="n">EL</span><span class="o">::</span><span class="n">StatusCode</span> <span class="n">histFinalize</span> <span class="p">();</span>
+
+
+    <span class="n">ClassDef</span><span class="p">(</span><span class="n">JetMaker</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="cp">#endif</span>
+</pre></div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2017, ATLAS Collaboration
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

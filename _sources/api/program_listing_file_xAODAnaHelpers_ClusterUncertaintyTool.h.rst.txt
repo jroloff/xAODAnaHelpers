@@ -1,0 +1,85 @@
+
+.. _program_listing_file_xAODAnaHelpers_ClusterUncertaintyTool.h:
+
+Program Listing for File ClusterUncertaintyTool.h
+=================================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_xAODAnaHelpers_ClusterUncertaintyTool.h>` (``xAODAnaHelpers/ClusterUncertaintyTool.h``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   /********************************************************
+    * ClusterUncertaintyTool:
+    *
+    * This class handles jet calibration and systematics
+    *
+    * Jeff Dandoy (jeff.dandoy@cern.ch)
+    *
+    ********************************************************/
+   
+   #ifndef xAODAnaHelpers_ClusterUncertaintyTool_H
+   #define xAODAnaHelpers_ClusterUncertaintyTool_H
+   
+   // external tools include(s):
+   #include "AsgTools/AnaToolHandle.h"
+   
+   #include "JetRecTools/JetConstituentModSequence.h"
+   
+   // algorithm wrapper
+   #include "xAODAnaHelpers/Algorithm.h"
+   
+   class ClusterUncertaintyTool : public xAH::Algorithm
+   {
+   public:
+     std::string m_inContainerName = "";
+     std::string m_outContainerName = "";
+   
+     std::string m_jetAlgo = "";
+     std::string m_outputAlgo = "";
+   
+   private:
+   
+     int m_numEvent;         
+     int m_numObject;        
+   
+     bool m_isMC;            
+     bool m_isFullSim;       
+   
+   
+     ToolHandleArray<IJetConstituentModifier> hclusts_ces; 
+     ToolHandleArray<IJetConstituentModifier> hclusts_cesUp; 
+     ToolHandleArray<IJetConstituentModifier> hclusts_cesDown; 
+     ToolHandleArray<IJetConstituentModifier> hclusts_car; 
+     ToolHandleArray<IJetConstituentModifier> hclusts_ce; 
+   
+     JetConstituentModSequence *cesModSeq; 
+     JetConstituentModSequence *cesUpModSeq; 
+     JetConstituentModSequence *cesDownModSeq; 
+     JetConstituentModSequence *carModSeq; 
+     JetConstituentModSequence *ceModSeq; 
+   
+   
+   public:
+   
+     // this is a standard constructor
+     ClusterUncertaintyTool ();
+   
+     // these are the functions inherited from Algorithm
+     virtual EL::StatusCode setupJob (EL::Job& job);
+     virtual EL::StatusCode fileExecute ();
+     virtual EL::StatusCode histInitialize ();
+     virtual EL::StatusCode changeInput (bool firstFile);
+     virtual EL::StatusCode initialize ();
+     virtual EL::StatusCode execute ();
+     virtual EL::StatusCode postExecute ();
+     virtual EL::StatusCode finalize ();
+     virtual EL::StatusCode histFinalize ();
+   
+     // this is needed to distribute the algorithm to the workers
+     ClassDef(ClusterUncertaintyTool, 1);
+   
+   };
+   
+   #endif

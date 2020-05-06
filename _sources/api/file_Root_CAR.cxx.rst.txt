@@ -1,0 +1,57 @@
+
+.. _file_Root_CAR.cxx:
+
+File CAR.cxx
+============
+
+|exhale_lsh| :ref:`Parent directory <dir_Root>` (``Root``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. contents:: Contents
+   :local:
+   :backlinks: none
+
+Definition (``Root/CAR.cxx``)
+-----------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_Root_CAR.cxx.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``TRandom3.h``
+
+- ``fastjet/ClusterSequenceArea.hh``
+
+- ``fastjet/PseudoJet.hh``
+
+- ``fastjet/Selector.hh``
+
+- ``vector``
+
+- ``xAODAnaHelpers/CAR.h`` (:ref:`file_xAODAnaHelpers_CAR.h`)
+
+- ``xAODBase/IParticleHelpers.h``
+
+- ``xAODCaloEvent/CaloCluster.h``
+
+- ``xAODCaloEvent/CaloClusterContainer.h``
+
+- ``xAODCore/ShallowAuxContainer.h``
+
+- ``xAODCore/ShallowCopy.h``
+
+
+
+
+

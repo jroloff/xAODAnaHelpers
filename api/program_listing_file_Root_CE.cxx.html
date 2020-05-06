@@ -1,0 +1,290 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Program Listing for File CE.cxx &mdash; xAODAnaHelpers 2cebf34 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script type="text/javascript" src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js"></script>
+        <script type="text/javascript" src="../_static/collapsible-lists/js/apply-collapsible-lists.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/collapsible-lists/css/tree_view.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> xAODAnaHelpers
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2cebf34
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../Intro.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Installing.html">Installing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../UsingUs.html">xAH_run.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Algorithms.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Development.html">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../Community.html">Community</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FAQs.html">xAH FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../API.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">Doxygen API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">xAODAnaHelpers</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Program Listing for File CE.cxx</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/program_listing_file_Root_CE.cxx.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="program-listing-for-file-ce-cxx">
+<span id="program-listing-file-root-ce-cxx"></span><h1>Program Listing for File CE.cxx<a class="headerlink" href="#program-listing-for-file-ce-cxx" title="Permalink to this headline">¶</a></h1>
+<p>↰ <a class="reference internal" href="file_Root_CE.cxx.html#file-root-ce-cxx"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">Root/CE.cxx</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;vector&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&quot;fastjet/ClusterSequenceArea.hh&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;fastjet/PseudoJet.hh&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;fastjet/Selector.hh&quot;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&quot;xAODCore/ShallowCopy.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODCaloEvent/CaloCluster.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODCaloEvent/CaloClusterContainer.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODBase/IParticleHelpers.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;xAODCore/ShallowAuxContainer.h&quot;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&quot;TRandom3.h&quot;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&quot;xAODAnaHelpers/CE.h&quot;</span><span class="cp"></span>
+
+
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
+
+
+<span class="n">ClusterEfficiency</span><span class="o">::</span><span class="n">ClusterEfficiency</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">name</span><span class="p">)</span> <span class="o">:</span> <span class="n">JetConstituentModifierBase</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+<span class="p">{</span>
+
+<span class="cp">#ifdef ASG_TOOL_ATHENA</span>
+  <span class="n">declareInterface</span><span class="o">&lt;</span><span class="n">IJetConstituentModifier</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="cp">#endif</span>
+
+  <span class="n">myrand_global</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TRandom3</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="c1">//for uncerts.</span>
+<span class="p">}</span>
+
+
+<span class="n">StatusCode</span> <span class="n">ClusterEfficiency</span><span class="o">::</span><span class="n">process</span><span class="p">(</span><span class="n">xAOD</span><span class="o">::</span><span class="n">CaloClusterContainer</span><span class="o">*</span> <span class="n">cont</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+  <span class="k">for</span><span class="p">(</span><span class="n">xAOD</span><span class="o">::</span><span class="n">CaloCluster</span><span class="o">*</span> <span class="nl">cl</span> <span class="p">:</span> <span class="o">*</span><span class="n">cont</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">double</span> <span class="n">phi_smear</span> <span class="o">=</span> <span class="n">myrand_global</span><span class="o">-&gt;</span><span class="n">Gaus</span><span class="p">(</span><span class="n">cl</span><span class="o">-&gt;</span><span class="n">phi</span><span class="p">(),</span><span class="mf">0.005</span><span class="p">);</span>
+    <span class="kt">double</span> <span class="n">eta_smear</span> <span class="o">=</span> <span class="n">myrand_global</span><span class="o">-&gt;</span><span class="n">Gaus</span><span class="p">(</span><span class="n">cl</span><span class="o">-&gt;</span><span class="n">eta</span><span class="p">(),</span><span class="mf">0.005</span><span class="p">);</span>
+        <span class="kt">double</span> <span class="n">E</span> <span class="o">=</span> <span class="n">cl</span><span class="o">-&gt;</span><span class="n">e</span><span class="p">();</span>
+        <span class="kt">double</span> <span class="n">pt</span> <span class="o">=</span> <span class="n">cl</span><span class="o">-&gt;</span><span class="n">pt</span><span class="p">();</span>
+        <span class="kt">double</span> <span class="n">eta</span> <span class="o">=</span> <span class="n">cl</span><span class="o">-&gt;</span><span class="n">eta</span><span class="p">();</span>
+    <span class="kt">double</span> <span class="n">E_smear</span> <span class="o">=</span> <span class="n">E</span><span class="o">*</span><span class="n">cosh</span><span class="p">(</span><span class="n">eta</span><span class="p">)</span><span class="o">/</span><span class="n">cosh</span><span class="p">(</span><span class="n">eta_smear</span><span class="p">);</span>
+
+
+
+      <span class="c1">//double r = 0.25*exp(-2.*E); //8 TeV.</span>
+      <span class="c1">//double flip = myrand_global-&gt;Uniform(0.,1.);</span>
+
+          <span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">etabins</span> <span class="o">=</span> <span class="p">{</span> <span class="mf">0.00</span><span class="p">,</span>  <span class="mf">0.60</span><span class="p">,</span>  <span class="mf">1.10</span><span class="p">,</span>  <span class="mf">1.40</span><span class="p">,</span>  <span class="mf">1.50</span><span class="p">,</span>   <span class="mf">1.80</span><span class="p">,</span>  <span class="mf">1.90</span><span class="p">,</span>  <span class="mf">5.00</span><span class="p">};</span>
+          <span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">alpha1</span> <span class="o">=</span>  <span class="p">{</span> <span class="mf">0.25</span><span class="p">,</span>  <span class="mf">0.12</span><span class="p">,</span>  <span class="mf">0.17</span><span class="p">,</span>  <span class="mf">0.17</span><span class="p">,</span>  <span class="mf">0.15</span><span class="p">,</span>   <span class="mf">0.16</span><span class="p">,</span>  <span class="mf">0.16</span><span class="p">,</span>  <span class="mf">0.16</span><span class="p">};</span>
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">beta1</span> <span class="o">=</span>   <span class="p">{</span><span class="o">-</span><span class="mf">2.00</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.51</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.31</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.95</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.14</span><span class="p">,</span>  <span class="o">-</span><span class="mf">2.77</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.47</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.61</span><span class="p">};</span>
+          <span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">alpha2</span> <span class="o">=</span>  <span class="p">{</span> <span class="mf">0.00</span><span class="p">,</span>  <span class="mf">4.76</span><span class="p">,</span>  <span class="mf">4.33</span><span class="p">,</span>  <span class="mf">1.14</span><span class="p">,</span> <span class="mf">2768.98</span><span class="p">,</span> <span class="mf">0.67</span><span class="p">,</span>  <span class="mf">0.86</span><span class="p">,</span>  <span class="mf">4.99</span><span class="p">};</span>
+        <span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span> <span class="n">beta2</span> <span class="o">=</span>   <span class="p">{</span> <span class="mf">0.00</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.29</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.23</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.04</span><span class="p">,</span> <span class="o">-</span><span class="mf">4.20</span><span class="p">,</span>  <span class="o">-</span><span class="mf">0.11</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.12</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.52</span><span class="p">};</span>
+
+    <span class="kt">int</span> <span class="n">etabin</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">etabins</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">){</span>
+      <span class="k">if</span><span class="p">(</span><span class="n">fabs</span><span class="p">(</span><span class="n">eta</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">etabins</span><span class="p">[</span><span class="n">i</span><span class="p">]){</span>
+        <span class="n">etabin</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+
+
+    <span class="kt">double</span> <span class="n">p</span> <span class="o">=</span> <span class="n">pt</span><span class="o">*</span><span class="n">cosh</span><span class="p">(</span><span class="n">eta</span><span class="p">)</span><span class="o">/</span><span class="mf">1000.</span><span class="p">;</span> <span class="c1">//GeV</span>
+    <span class="kt">double</span> <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">alpha1</span><span class="p">[</span><span class="n">etabin</span><span class="p">]</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="n">beta1</span><span class="p">[</span><span class="n">etabin</span><span class="p">]</span><span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="o">+</span> <span class="n">alpha2</span><span class="p">[</span><span class="n">etabin</span><span class="p">]</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="n">beta2</span><span class="p">[</span><span class="n">etabin</span><span class="p">]</span><span class="o">*</span><span class="n">p</span><span class="o">*</span><span class="n">p</span><span class="p">))</span> <span class="o">/</span> <span class="mf">100.</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">flip</span> <span class="o">=</span> <span class="n">myrand_global</span><span class="o">-&gt;</span><span class="n">Uniform</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">((</span><span class="n">flip</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">E</span><span class="o">/</span><span class="mf">1000.</span> <span class="o">&lt;</span> <span class="mf">2.5</span><span class="p">)))</span>
+            <span class="n">cl</span><span class="o">-&gt;</span><span class="n">setE</span><span class="p">(</span><span class="n">E</span><span class="p">);</span>
+            <span class="c1">// do nothing</span>
+        <span class="k">else</span>
+            <span class="n">cl</span><span class="o">-&gt;</span><span class="n">setE</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="n">StatusCode</span><span class="o">::</span><span class="n">SUCCESS</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">StatusCode</span> <span class="n">ClusterEfficiency</span><span class="o">::</span><span class="n">process</span><span class="p">(</span><span class="n">xAOD</span><span class="o">::</span><span class="n">IParticleContainer</span><span class="o">*</span> <span class="n">cont</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+  <span class="n">xAOD</span><span class="o">::</span><span class="n">CaloClusterContainer</span><span class="o">*</span> <span class="n">clust</span> <span class="o">=</span> <span class="k">dynamic_cast</span><span class="o">&lt;</span><span class="n">xAOD</span><span class="o">::</span><span class="n">CaloClusterContainer</span><span class="o">*&gt;</span> <span class="p">(</span><span class="n">cont</span><span class="p">);</span> <span class="c1">// Get CaloCluster container</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">clust</span><span class="p">)</span> <span class="k">return</span> <span class="n">process</span><span class="p">(</span><span class="n">clust</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">StatusCode</span><span class="o">::</span><span class="n">FAILURE</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2017, ATLAS Collaboration
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+.. _exhale_function_ClusterUncertaintyTool_8cxx_1af42059d3833cd08e41728f7dbbde4495:
+
+Function ClassImp(ClusterUncertaintyTool)
+=========================================
+
+- Defined in :ref:`file_Root_ClusterUncertaintyTool.cxx`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ClassImp(ClusterUncertaintyTool)
