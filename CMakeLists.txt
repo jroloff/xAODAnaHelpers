@@ -46,6 +46,7 @@ atlas_depends_on_subdirs( PUBLIC
                           PhysicsAnalysis/AnalysisCommon/PATInterfaces
                           PhysicsAnalysis/AnalysisCommon/PMGTools
                           PhysicsAnalysis/AnalysisCommon/PileupReweighting
+                          PhysicsAnalysis/AnalysisCommon/ParticleJetTools
                           PhysicsAnalysis/D3PDTools/RootCoreUtils
                           PhysicsAnalysis/D3PDTools/SampleHandler
                           PhysicsAnalysis/ElectronPhotonID/ElectronEfficiencyCorrection
@@ -91,7 +92,7 @@ atlas_add_library( xAODAnaHelpersLib xAODAnaHelpers/*.h Root/*.h Root/*.cxx ${xA
                    PUBLIC_HEADERS xAODAnaHelpers
                    INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}
                    LINK_LIBRARIES ${ROOT_LIBRARIES} EventLoop xAODBase xAODRootAccess
-                   xAODEventInfo GoodRunsListsLib PileupReweightingLib PATInterfaces
+                   xAODEventInfo GoodRunsListsLib PileupReweightingLib PATInterfaces 
                    PathResolver xAODTau xAODJet xAODMuon xAODEgamma
                    xAODTracking xAODTruth MuonMomentumCorrectionsLib
                    MuonEfficiencyCorrectionsLib MuonSelectorToolsLib JetCalibToolsLib

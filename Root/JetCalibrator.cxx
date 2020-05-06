@@ -263,10 +263,22 @@ EL::StatusCode JetCalibrator :: initialize ()
   if(isMC() && m_inContainerName.find("AntiKt10") != std::string::npos){
     // Truth labelling is required for systematics on largeR jets and is provided by the WZ tagger tool.
     // Since only the truth-labelling functionality is used, the tagger config is hard-coded as it does not matter.
-    ANA_CHECK(m_SmoothedWZTagger_handle.setProperty("CalibArea" , "SmoothedWZTaggers/Rel21"));
-    ANA_CHECK(m_SmoothedWZTagger_handle.setProperty("ConfigFile", "SmoothedContainedWTagger_AntiKt10LCTopoTrimmed_FixedSignalEfficiency50_MC16d_20190410.dat"));
-    ANA_CHECK(m_SmoothedWZTagger_handle.setProperty("DSID", ei->mcChannelNumber()));
-    ANA_CHECK(m_SmoothedWZTagger_handle.retrieve());
+    //ANA_CHECK(m_SmoothedWZTagger_handle.setProperty("CalibArea" , "SmoothedWZTaggers/Rel21"));
+    //ANA_CHECK(m_SmoothedWZTagger_handle.setProperty("ConfigFile", "SmoothedContainedWTagger_AntiKt10LCTopoTrimmed_FixedSignalEfficiency50_MC16d_20190410.dat"));
+    //ANA_CHECK(m_SmoothedWZTagger_handle.setProperty("DSID", ei->mcChannelNumber()));
+    //ANA_CHECK(m_SmoothedWZTagger_handle.retrieve());
+
+
+
+    ASG_SET_ANA_TOOL_TYPE( m_JetTruthLabelingTool, JetTruthLabelingTool);
+    m_JetTruthLabelingTool.setName("JetTruthLabelingTool");
+    ATH_CHECK( m_JetTruthLabelingTool.setProperty("TruthLabelName", "TruthLabelTool") );
+    ATH_CHECK( m_JetTruthLabelingTool.setProperty("UseTRUTH3", true) );
+    ATH_CHECK( m_JetTruthLabelingTool.setProperty("TruthBosonContainerName", "TruthBoson") );
+    ATH_CHECK( m_JetTruthLabelingTool.setProperty("TruthTopQuarkContainerName", "TruthTop") );
+    ATH_CHECK( m_JetTruthLabelingTool.retrieve() );
+
+
   }// if MC && largeR
 
   // Generate nominal systematic
@@ -438,8 +450,10 @@ EL::StatusCode JetCalibrator :: execute ()
       accIsBjet(*jet_itr) = isBjet;
 
       // largeR jet truth labelling
-      if(m_SmoothedWZTagger_handle.isInitialized()) {
-	m_SmoothedWZTagger_handle->decorateTruthLabel(*jet_itr);
+      //if(m_SmoothedWZTagger_handle.isInitialized()) {
+	    //m_SmoothedWZTagger_handle->decorateTruthLabel(*jet_itr);
+      if(m_JetTruthLabelingTool.isInitialized()) {
+      m_JetTruthLabelingTool->modifyJet(*jet_itr);
       }
     }
 
