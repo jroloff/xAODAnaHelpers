@@ -147,7 +147,6 @@ private:
   asg::AnaToolHandle<IJetModifier>               m_fJVTTool_handle             {"JetForwardJvtTool"    , this}; //!
   asg::AnaToolHandle<IJetSelector>               m_JetCleaningTool_handle      {"JetCleaningTool"      , this}; //!
   asg::AnaToolHandle<CP::IJetTileCorrectionTool> m_JetTileCorrectionTool_handle{"JetTileCorrectionTool", this}; //!
-  //asg::AnaToolHandle<SmoothedWZTagger>           m_SmoothedWZTagger_handle     {"SmoothedWZTagger"     , this}; //!
   asg::AnaToolHandle<JetTruthLabelingTool> m_JetTruthLabelingTool{"JetTruthLabelingTool", this}; //!
 
   std::vector<asg::AnaToolHandle<IJetSelector>>  m_AllJetCleaningTool_handles; //!
